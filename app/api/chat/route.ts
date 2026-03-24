@@ -86,6 +86,9 @@ export async function POST(req: Request) {
     - OPTIMIZATION: Call \`analyze_backtest_results\` whenever a user provides backtest data or asks "why did I lose?". 
       - **Look for**: Day-of-week bias, Hour-of-day bias, Win/Loss clusters, and Risk/Reward skew.
       - **Suggest**: Filter adjustments (e.g. \`hour > 13\`), timeframe changes, or indicator tuning.
+    - PORTFOLIO: Use \`compare_asset_performance\` when a user provides multi-asset (basket) results.
+      - **Look for**: High correlation (>0.8) between assets. High correlation means no diversification benefit.
+      - **Suggest**: Removing highly correlated assets or adjusting logic to capture different market regimes.
     
     SYSTEM LOOP (IMPORTANT):
     - If you receive the exact message "_INTERNAL_CONTINUE_LOOP_", this means a tool you just called has returned data to your context history.
@@ -314,6 +317,24 @@ export async function POST(req: Request) {
             return {
               status: "Data ingested. You can now perform the analysis.",
               insights_hint: "Look for clusters of losses or specific hours/days where performance drops."
+            };
+          }
+        },
+        compare_asset_performance: {
+          description: "Analyze a multi-asset (portfolio) backtest to find correlations and suggest basket optimizations.",
+          inputSchema: z.object({
+            correlation_matrix: z.record(z.record(z.number())).describe("The cross-asset correlation matrix from the engine."),
+            individual_metrics: z.record(z.object({
+              sharpe: z.number().optional(),
+              win_rate: z.number().optional(),
+              mdd: z.number().optional()
+            })).describe("Performance stats broken down by symbol.")
+          }),
+          execute: async ({ correlation_matrix, individual_metrics }: { correlation_matrix: any, individual_metrics: any }) => {
+            console.log("Analyzing Portfolio Correlation...");
+            return {
+              status: "Correlation data ingested.",
+              insights_hint: "Check for correlation values > 0.8 which indicate redundant risk."
             };
           }
         }

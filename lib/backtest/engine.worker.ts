@@ -34,6 +34,8 @@ export interface BacktestResult {
   profitFactor?: number;
   expectancy?: number;
   recoveryFactor?: number;
+  correlationMatrix?: Record<string, Record<string, number>>;
+  diversificationBenefit?: number;
 }
 
 export interface StrategyJSON {
@@ -435,12 +437,151 @@ export function runSimulation(
   };
 }
 
+/**
+ * PORTFOLIO SIMULATION ENGINE
+ * Aggregates multiple single-asset simulations into a unified portfolio view.
+ */
+export function runPortfolioSimulation(
+    dataMap: Record<string, OHLCV[]>,
+    strategy: StrategyJSON,
+    params: StrategyParameters
+): BacktestResult {
+    const assets = Object.keys(dataMap);
+    const individualResults: Record<string, BacktestResult> = {};
+    
+    // 1. Run individual simulations (scaled capital)
+    const scaledParams = { ...params, initialCapital: (params.initialCapital ?? 10000) / assets.length };
+    
+    assets.forEach(symbol => {
+        individualResults[symbol] = runSimulation(dataMap[symbol], strategy, scaledParams);
+    });
+
+    // 2. Aggregate Equity Curves
+    const compositeEquity: Record<number, number> = {};
+    const compositeBenchmark: Record<number, number> = {};
+    
+    assets.forEach(symbol => {
+        individualResults[symbol].equityCurve.forEach(p => {
+            compositeEquity[p.timestamp] = (compositeEquity[p.timestamp] || 0) + p.equity;
+        });
+        individualResults[symbol].benchmarkCurve.forEach(p => {
+            compositeBenchmark[p.timestamp] = (compositeBenchmark[p.timestamp] || 0) + p.equity;
+        });
+    });
+
+    const equityCurve = Object.keys(compositeEquity).map(ts => ({
+        timestamp: parseInt(ts),
+        equity: compositeEquity[parseInt(ts)]
+    })).sort((a, b) => a.timestamp - b.timestamp);
+
+    const benchmarkCurve = Object.keys(compositeBenchmark).map(ts => ({
+        timestamp: parseInt(ts),
+        equity: compositeBenchmark[parseInt(ts)]
+    })).sort((a, b) => a.timestamp - b.timestamp);
+
+    // 3. Correlation Matrix Calculation
+    const correlationMatrix: Record<string, Record<string, number>> = {};
+    assets.forEach(s1 => {
+        correlationMatrix[s1] = {};
+        assets.forEach(s2 => {
+            if (s1 === s2) {
+                correlationMatrix[s1][s2] = 1.0;
+            } else {
+                correlationMatrix[s1][s2] = calculateCorrelation(
+                    individualResults[s1].equityCurve.map(p => p.equity),
+                    individualResults[s2].equityCurve.map(p => p.equity)
+                );
+            }
+        });
+    });
+
+    // 4. Portfolio Stats
+    const finalEquity = equityCurve[equityCurve.length - 1]?.equity || 0;
+    const initialCap = params.initialCapital ?? 10000;
+    
+    let peak = initialCap;
+    let maxDrawdown = 0;
+    equityCurve.forEach(p => {
+        if (p.equity > peak) peak = p.equity;
+        const dd = (peak - p.equity) / peak;
+        if (dd > maxDrawdown) maxDrawdown = dd;
+    });
+
+    const allTrades: any[] = [];
+    assets.forEach(s => {
+        individualResults[s].trades.forEach(t => allTrades.push({ ...t, symbol: s }));
+    });
+
+    return {
+        equityCurve,
+        benchmarkCurve,
+        trades: allTrades.sort((a,b) => a.timestamp - b.timestamp),
+        finalEquity,
+        totalTrades: allTrades.filter(t => t.type === 'SELL' || t.type === 'PARTIAL_SELL').length,
+        winRate: allTrades.filter(t => (t.pnl || 0) > 0).length / (allTrades.filter(t => t.type === 'SELL').length || 1),
+        mdd: maxDrawdown,
+        correlationMatrix,
+        diversificationBenefit: 1 - (maxDrawdown / (assets.reduce((sum, s) => sum + individualResults[s].mdd, 0) / assets.length || 1))
+    };
+}
+
+function calculateCorrelation(x: number[], y: number[]): number {
+    const n = Math.min(x.length, y.length);
+    if (n < 2) return 0;
+    
+    const meanX = x.slice(0, n).reduce((a, b) => a + b) / n;
+    const meanY = y.slice(0, n).reduce((a, b) => a + b) / n;
+    
+    let num = 0;
+    let denX = 0;
+    let denY = 0;
+    
+    for (let i = 0; i < n; i++) {
+        const dx = x[i] - meanX;
+        const dy = y[i] - meanY;
+        num += dx * dy;
+        denX += dx * dx;
+        denY += dy * dy;
+    }
+    
+    return num / (Math.sqrt(denX * denY) || 1);
+}
+
+export function runWalkForward(
+    data: OHLCV[],
+    strategy: StrategyJSON,
+    params: StrategyParameters
+): any {
+    const splits = 4;
+    const chunkSize = Math.floor(data.length / splits);
+    const results = [];
+    
+    for (let i = 0; i < splits - 1; i++) {
+        const trainData = data.slice(i * chunkSize, (i + 1) * chunkSize);
+        const testData = data.slice((i + 1) * chunkSize, (i + 2) * chunkSize);
+        
+        results.push({
+            period: i + 1,
+            train: runSimulation(trainData, strategy, params),
+            test: runSimulation(testData, strategy, params)
+        });
+    }
+    return results;
+}
+
 // Web Worker API listener
 if (typeof self !== 'undefined') {
     self.addEventListener('message', (e) => {
-        const { id, data, strategy, params, htfData } = e.data;
+        const { id, type, data, strategy, params, dataMap } = e.data;
         try {
-            const results = runSimulation(data, strategy, params, htfData);
+            let results;
+            if (type === 'portfolio' && dataMap) {
+                results = runPortfolioSimulation(dataMap, strategy, params);
+            } else if (type === 'walk-forward' && data) {
+                results = runWalkForward(data, strategy, params);
+            } else {
+                results = runSimulation(data, strategy, params);
+            }
             self.postMessage({ id, status: 'success', results });
         } catch(err: any) {
             self.postMessage({ id, status: 'error', error: err.message });
