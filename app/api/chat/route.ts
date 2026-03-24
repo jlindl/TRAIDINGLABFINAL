@@ -83,6 +83,9 @@ export async function POST(req: Request) {
         - Candles -> Detect Hammer, Doji, or Engulfing patterns and translate to price-action rules.
     - RECALL: Look up past strategies and their backtest history (ONLY when asked or strictly relevant).
     - FORMALIZATION: Sealed Strategy Contracts for the engine (ONLY when the user explicitly says "go for it" or "build it").
+    - OPTIMIZATION: Call \`analyze_backtest_results\` whenever a user provides backtest data or asks "why did I lose?". 
+      - **Look for**: Day-of-week bias, Hour-of-day bias, Win/Loss clusters, and Risk/Reward skew.
+      - **Suggest**: Filter adjustments (e.g. \`hour > 13\`), timeframe changes, or indicator tuning.
     
     SYSTEM LOOP (IMPORTANT):
     - If you receive the exact message "_INTERNAL_CONTINUE_LOOP_", this means a tool you just called has returned data to your context history.
@@ -282,6 +285,32 @@ export async function POST(req: Request) {
             return data;
           },
         },
+        analyze_backtest_results: {
+          description: "Perform a deep-dive post-mortem on backtest data to identify performance leaks and optimization opportunities.",
+          inputSchema: z.object({
+            summary: z.object({
+              win_rate: z.number(),
+              total_return: z.number(),
+              max_drawdown: z.number(),
+              trade_count: z.number()
+            }),
+            trades: z.array(z.object({
+              entry_time: z.string(),
+              exit_time: z.string(),
+              profit: z.number(),
+              side: z.string()
+            })).describe("Recent trade history for pattern detection.")
+          }),
+          execute: async ({ summary, trades }: { summary: any, trades: any[] }) => {
+            console.log(`Analyzing ${trades.length} trades for post-mortem...`);
+            // This tool is primarily for the Assistant to "see" the data.
+            // Returning the data back to the assistant acts as its "eyes".
+            return {
+              status: "Data ingested. You can now perform the analysis.",
+              insights_hint: "Look for clusters of losses or specific hours/days where performance drops."
+            };
+          }
+        }
       },
     });
 
