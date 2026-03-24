@@ -323,8 +323,8 @@ export async function POST(req: Request) {
         compare_asset_performance: {
           description: "Analyze a multi-asset (portfolio) backtest to find correlations and suggest basket optimizations.",
           inputSchema: z.object({
-            correlation_matrix: z.record(z.record(z.number())).describe("The cross-asset correlation matrix from the engine."),
-            individual_metrics: z.record(z.object({
+            correlation_matrix: z.record(z.string(), z.record(z.string(), z.number())).describe("The cross-asset correlation matrix from the engine."),
+            individual_metrics: z.record(z.string(), z.object({
               sharpe: z.number().optional(),
               win_rate: z.number().optional(),
               mdd: z.number().optional()
