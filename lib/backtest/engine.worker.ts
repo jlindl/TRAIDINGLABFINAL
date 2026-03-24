@@ -16,17 +16,24 @@ export interface TradeLocation {
   price: number;
   type: 'BUY' | 'SELL' | 'PARTIAL_SELL';
   size: number;
-  pnl?: number; // Realized PNL
+  pnl?: number;
+  mfe?: number;
+  mae?: number;
+  duration?: number;
 }
 
 export interface BacktestResult {
   equityCurve: { timestamp: number, equity: number }[];
-  trades: TradeLocation[];
+  trades: any[];
   finalEquity: number;
   totalTrades: number;
   winRate: number;
   mdd: number;
   benchmarkCurve: { timestamp: number, equity: number }[];
+  sharpeRatio?: number;
+  profitFactor?: number;
+  expectancy?: number;
+  recoveryFactor?: number;
 }
 
 export interface StrategyJSON {
@@ -191,6 +198,8 @@ export function runSimulation(
   let peakEquity = initialCap;
   let maxDrawdown = 0;
   let highestPriceSinceEntry = 0;
+  let lowestPriceSinceEntry = 0;
+  let entryIndex = 0;
   let partialExitHit = false;
   let stopLossAdjusted = 0;
 
@@ -256,17 +265,18 @@ export function runSimulation(
         positionSize = capitalToDeploy / totalExecPrice;
         cash -= capitalToDeploy;
         entryPrice = totalExecPrice;
-        highestPriceSinceEntry = totalExecPrice;
+        highestPriceSinceEntry = candle.high;
+        lowestPriceSinceEntry = candle.low;
+        entryIndex = i;
         partialExitHit = false;
         stopLossAdjusted = 0;
         
         trades.push({ timestamp: candle.timestamp, price: totalExecPrice, type: 'BUY', size: positionSize });
     } 
     else if (positionSize > 0) {
-        // Update high water mark for TSL
-        if (candle.high > highestPriceSinceEntry) {
-            highestPriceSinceEntry = candle.high;
-        }
+        // Update high/low water marks for MAE/MFE and TSL
+        if (candle.high > highestPriceSinceEntry) highestPriceSinceEntry = candle.high;
+        if (candle.low < lowestPriceSinceEntry) lowestPriceSinceEntry = candle.low;
 
         // Break-even logic
         if (!stopLossAdjusted && strategy.exit.bePct) {
@@ -339,15 +349,25 @@ export function runSimulation(
              
              cash += grossProceeds;
              
-             if (pnl > 0) totalWins++;
-             else totalLosses++;
-             
-             trades.push({ timestamp: candle.timestamp, price: totalExecPrice, type: 'SELL', size: positionSize, pnl });
-             
-             positionSize = 0;
-             entryPrice = 0;
+              const mfe = (highestPriceSinceEntry - entryPrice) / entryPrice * 100;
+              const mae = (lowestPriceSinceEntry - entryPrice) / entryPrice * 100;
+
+              trades.push({ 
+                timestamp: candle.timestamp, 
+                price: totalExecPrice, 
+                type: 'SELL', 
+                size: positionSize, 
+                pnl,
+                mfe,
+                mae,
+                duration: i - entryIndex
+              });
+              
+              positionSize = 0;
+              entryPrice = 0;
         }
     }
+
 
     // Mark-to-Market Equity Tracking
     equity = cash + (positionSize * candle.close);
@@ -372,20 +392,46 @@ export function runSimulation(
       
       if (pnl > 0) totalWins++;
       else totalLosses++;
+
+      const mfe = (highestPriceSinceEntry - entryPrice) / entryPrice * 100;
+      const mae = (lowestPriceSinceEntry - entryPrice) / entryPrice * 100;
              
-      trades.push({ timestamp: finalCandle.timestamp, price: totalExecPrice, type: 'SELL', size: positionSize, pnl });
+      trades.push({ 
+        timestamp: finalCandle.timestamp, 
+        price: totalExecPrice, 
+        type: 'SELL', 
+        size: positionSize, 
+        pnl,
+        mfe,
+        mae,
+        duration: data.length - entryIndex
+      });
   }
 
   equity = cash;
+  const winsList = trades.filter(t => (t.pnl || 0) > 0);
+  const lossesList = trades.filter(t => (t.pnl || 0) <= 0 && t.type !== 'BUY');
+  const grossProfit = winsList.reduce((sum: number, t: any) => sum + (t.pnl || 0), 0);
+  const grossLoss = Math.abs(lossesList.reduce((sum: number, t: any) => sum + (t.pnl || 0), 0));
+  const profitFactor = grossLoss === 0 ? grossProfit : grossProfit / grossLoss;
+
+  const returns = trades.filter(t => t.pnl !== undefined).map(t => t.pnl! / (initialCap / 100) ); // Normalized % returns
+  const avgReturn = returns.reduce((a, b) => a + b, 0) / (returns.length || 1);
+  const stdDev = Math.sqrt(returns.map(x => Math.pow(x - avgReturn, 2)).reduce((a, b) => a + b, 0) / (returns.length || 1));
+  const sharpeRatio = stdDev === 0 ? 0 : (avgReturn / stdDev) * Math.sqrt(252);
 
   return {
     equityCurve,
     benchmarkCurve,
     trades,
     finalEquity: equity,
-    totalTrades: trades.length / 2, // Pairs of Buy/Sell
+    totalTrades: trades.filter(t => t.type === 'SELL' || t.type === 'PARTIAL_SELL').length,
     winRate: totalWins / (totalWins + totalLosses || 1),
-    mdd: maxDrawdown
+    mdd: maxDrawdown,
+    sharpeRatio,
+    profitFactor,
+    expectancy: (totalWins + totalLosses) > 0 ? (grossProfit - grossLoss) / (totalWins + totalLosses) : 0,
+    recoveryFactor: maxDrawdown === 0 ? 0 : ((equity - initialCap) / initialCap * 100) / (maxDrawdown * 100)
   };
 }
 

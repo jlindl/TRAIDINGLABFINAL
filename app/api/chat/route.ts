@@ -292,13 +292,19 @@ export async function POST(req: Request) {
               win_rate: z.number(),
               total_return: z.number(),
               max_drawdown: z.number(),
-              trade_count: z.number()
+              trade_count: z.number(),
+              sharpe_ratio: z.number().optional(),
+              profit_factor: z.number().optional(),
+              expectancy: z.number().optional()
             }),
             trades: z.array(z.object({
               entry_time: z.string(),
               exit_time: z.string(),
               profit: z.number(),
-              side: z.string()
+              side: z.string(),
+              mfe: z.number().optional(),
+              mae: z.number().optional(),
+              duration: z.number().optional()
             })).describe("Recent trade history for pattern detection.")
           }),
           execute: async ({ summary, trades }: { summary: any, trades: any[] }) => {
