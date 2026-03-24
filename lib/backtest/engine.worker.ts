@@ -354,16 +354,17 @@ export function runSimulation(
               const mfe = (highestPriceSinceEntry - entryPrice) / entryPrice * 100;
               const mae = (lowestPriceSinceEntry - entryPrice) / entryPrice * 100;
 
-              trades.push({ 
-                timestamp: candle.timestamp, 
-                price: totalExecPrice, 
-                type: 'SELL', 
-                size: positionSize, 
-                pnl,
-                mfe,
-                mae,
-                duration: i - entryIndex
-              });
+               trades.push({ 
+                 timestamp: candle.timestamp, 
+                 price: totalExecPrice, 
+                 type: 'SELL', 
+                 size: positionSize, 
+                 pnl,
+                 mfe,
+                 mae,
+                 duration: i - entryIndex
+               });
+               
               
               positionSize = 0;
               entryPrice = 0;
@@ -521,7 +522,7 @@ export function runPortfolioSimulation(
         winRate: allTrades.filter(t => (t.pnl || 0) > 0).length / (allTrades.filter(t => t.type === 'SELL').length || 1),
         mdd: maxDrawdown,
         correlationMatrix,
-        diversificationBenefit: 1 - (maxDrawdown / (assets.reduce((sum, s) => sum + individualResults[s].mdd, 0) / assets.length || 1))
+        diversificationBenefit: 1 - (maxDrawdown / (assets.reduce((sum: number, s: string) => sum + individualResults[s].mdd, 0) / assets.length || 1))
     };
 }
 
