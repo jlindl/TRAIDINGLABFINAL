@@ -76,6 +76,11 @@ export async function POST(req: Request) {
     CAPABILITIES:
     - CONVERSATION: Answer trading questions, discuss concepts, and guide the user naturally without tools.
     - VISION: Analyze chart screenshots for S/R and Trend patterns.
+      - **Image Analysis**: When a user uploads a chart, identify key Price Levels (Support/Resistance), Trends, and Candlestick Patterns.
+      - **Mapping to Logic**: 
+        - Horizontal Levels -> Translate to \`close > {price}\` or \`close < {price}\` or \`CROSSOVER(close, {price})\`.
+        - Trends -> Identify if bullish/bearish and suggest moving averages (SMA/EMA) or Trendline breaches (\`close > prev_high\`).
+        - Candles -> Detect Hammer, Doji, or Engulfing patterns and translate to price-action rules.
     - RECALL: Look up past strategies and their backtest history (ONLY when asked or strictly relevant).
     - FORMALIZATION: Sealed Strategy Contracts for the engine (ONLY when the user explicitly says "go for it" or "build it").
     
@@ -87,7 +92,8 @@ export async function POST(req: Request) {
     When using \`finalize_strategy\`, you MUST obey the Backtesting Engine Parser rules:
     - \`logic\` MUST be a strict mathematical AST expression. NO English text. 
     - SUPPORTED OPERATORS: \`>\`, \`<\`, \`>=\`, \`<=\`, \`==\`, \`!=\`, \`AND\`, \`OR\`, \`NOT\`, and grouping parentheses \`(...)\`.
-    - WARNING: Functions like \`CROSSOVER(A, B)\` are NOT SUPPORTED. You must use relational operators (e.g., \`SMA_50 > SMA_200\`).
+    - SUPPORTED FUNCTIONS: \`CROSSOVER(A, B)\` (true when A breaks above B), \`CROSSUNDER(A, B)\` (true when A breaks below B).
+    - WARNING: Other complex functions like \`RSI_CROSS(30)\` are NOT SUPPORTED. You must use relational operators or the specific \`CROSSOVER/UNDER\` functions.
     - VARIABLES: Use the keys you define in the \`parameters\` object (e.g. \`RSI_14\`) or built-in context variables: ${contextVars}.
     - Example Logic String: \`NOT (RSI_14 < 30 OR RSI_14 > 70)\`
     - Example Time Filtered String: \`close > SMA_50 AND hour >= 13 AND hour <= 19 AND dayOfWeek != 0 AND dayOfWeek != 6\`

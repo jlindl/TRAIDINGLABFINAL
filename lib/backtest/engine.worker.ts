@@ -230,6 +230,13 @@ export function runSimulation(
     // Inject indicator values for the previous bar
     for (const key in indData) {
         context[key] = indData[key][i - 1];
+        // Only inject _prev if we have a bar before the current evaluation point
+        if (i > 1 && indData[key][i - 2] !== undefined) {
+            context[`${key}_prev`] = indData[key][i - 2];
+        } else {
+            // High-reliability default: fallback to current if at start of series
+            context[`${key}_prev`] = indData[key][i - 1];
+        }
     }
 
     // Evaluate Logic

@@ -22,6 +22,14 @@ export function safeEvaluate(logic: string, context: Record<string, number>): bo
     // 2. Normalize Logical Operators
     expression = expression.replace(/\s+and\s+/gi, ' AND ').replace(/\s+or\s+/gi, ' OR ').replace(/^not\s+/gi, 'NOT ').replace(/\s+not\s+/gi, ' NOT ');
 
+    // 2.5. Handle Functions: CROSSOVER(A, B) -> (A > B AND A_prev <= B_prev)
+    const crossoverRegex = /CROSSOVER\(([^,]+),\s*([^)]+)\)/gi;
+    expression = expression.replace(crossoverRegex, '($1 > $2 AND $1_prev <= $2_prev)');
+
+    const crossunderRegex = /CROSSUNDER\(([^,]+),\s*([^)]+)\)/gi;
+    expression = expression.replace(crossunderRegex, '($1 < $2 AND $1_prev >= $2_prev)');
+
+
     // 3. Handle OR Logic (Lowest Precedence)
     if (expression.includes(' OR ')) {
         const parts = expression.split(' OR ');
