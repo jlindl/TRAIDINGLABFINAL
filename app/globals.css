@@ -1,26 +1,198 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════
+   TRAIDINGLAB — Design System
+   "Deep Black + Neon Green" Aesthetic
+   ═══════════════════════════════════════════ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #050505;
+  --foreground: #e4e4e4;
+
+  /* Palette */
+  --neon: #55ff00 !important;
+  --neon-dim: #44cc00 !important;
+  --neon-glow: rgba(85, 255, 0, 0.3) !important;
+  --red: #ff3b3b;
+  --red-dim: #cc2f2f;
+  --red-glow: rgba(255, 59, 59, 0.2);
+  --glass-white: rgba(255, 255, 255, 0.05);
+  --glass-border-top: rgba(255, 255, 255, 0.12);
+  --glass-border-bottom: rgba(255, 255, 255, 0);
+  --surface: rgba(255, 255, 255, 0.03);
+
+  /* Spacing */
+  --section-py: clamp(5rem, 12vh, 8rem);
+  --header-h: 64px;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-neon: var(--neon);
+  --color-neon-dim: var(--neon-dim);
+  --color-red: var(--red);
+  --color-red-dim: var(--red-dim);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ── Base ─────────────────────────────── */
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: rgba(0, 255, 136, 0.25);
+  color: #fff;
+}
+
+/* ── Background Grid ────────────────── */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(10, 222, 129, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10, 222, 129, 0.03) 1px, transparent 1px);
+  background-size: 50px 50px;
+}
+
+/* ── Glass Edge Border ──────────────── */
+.glass-edge {
+  position: relative;
+  background: var(--surface);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+.glass-edge::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  padding: 1px;
+  background: linear-gradient(
+    135deg,
+    var(--glass-border-top),
+    transparent 50%,
+    var(--glass-border-bottom)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+/* ── Shimmer Overlay ────────────────── */
+.shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 255, 255, 0.03) 45%,
+    rgba(255, 255, 255, 0.06) 50%,
+    rgba(255, 255, 255, 0.03) 55%,
+    transparent 60%
+  );
+  background-size: 250% 100%;
+  animation: shimmer 5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Keyframes ──────────────────────── */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-18px); }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes ping-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.6); }
+}
+
+@keyframes spin-slow {
+  from { transform: rotateY(0deg) rotateX(15deg); }
+  to { transform: rotateY(360deg) rotateX(15deg); }
+}
+
+@keyframes gradient-shift {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+/* ── Utility Classes ────────────────── */
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-ping-dot {
+  animation: ping-dot 1.5s ease-in-out infinite;
+}
+
+.animate-spin-slow {
+  animation: spin-slow 12s linear infinite;
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, var(--neon) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.neon-title-gradient {
+  background: linear-gradient(to right, #55ff00 0%, #ffffff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 30px rgba(85, 255, 0, 0.25));
+}
+
+/* ── Smooth Scrolling ───────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ── Scrollbar ──────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.2);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 255, 136, 0.4);
 }
