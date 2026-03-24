@@ -5,6 +5,8 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 
 import { SUPPORTED_INDICATORS, CONTEXT_VARIABLES, RISK_PARAMETERS } from "@/lib/backtest/schema";
+import { fetchQuote, fetchSentiment, fetchTechnicalIndicator } from "@/lib/api/alpha_vantage";
+
 
 export const maxDuration = 30;
 
@@ -24,9 +26,10 @@ export async function POST(req: Request) {
   // Get user profile and settings
   const { data: profile } = await supabase
     .from("profiles")
-    .select("settings")
+    .select("settings, alpha_vantage_key")
     .eq("id", user.id)
     .single();
+
 
   const userSettings = profile?.settings || {};
   const personality = userSettings.lab_assistant?.personality || "Analytical";
@@ -161,17 +164,63 @@ export async function POST(req: Request) {
             symbol: z.string().describe("The stock or crypto symbol (e.g. BTC, AAPL)"),
           }),
           execute: async ({ symbol }: { symbol: string }) => {
-            console.log(`Fetching data for ${symbol}...`);
-            return {
-              price: 64120.42,
-              change_24h: "+2.41%",
-              sentiment: "84% Positive",
-              signals: [
-                { indicator: "RSI(14)", value: "64.2", status: "Neutral" },
-                { indicator: "MACD", value: "Bullish X", status: "Strong" }
-              ]
-            };
+            const apiKey = profile?.alpha_vantage_key || process.env.ALPHA_VANTAGE_API_KEY;
+            
+            if (!apiKey) {
+               return { error: "No Alpha Vantage API key found. Please add it to your profile settings." };
+            }
+
+            // 1. Check Cache
+            const { data: cache } = await supabase
+              .from("market_data_cache")
+              .select("*")
+              .eq("symbol", symbol.toUpperCase())
+              .single();
+            
+            const isFresh = cache && (new Date().getTime() - new Date(cache.last_updated).getTime() < 15 * 60 * 1000);
+            
+            if (isFresh) {
+              console.log(`Cache hit for ${symbol}`);
+              return cache.data;
+            }
+
+            console.log(`Fetching live data for ${symbol}...`);
+
+            try {
+              // 2. Fetch Live data (Parallel)
+              const [quote, sentiment, rsi, macd] = await Promise.all([
+                fetchQuote(symbol, apiKey),
+                fetchSentiment(symbol, apiKey),
+                fetchTechnicalIndicator(symbol, "RSI", apiKey),
+                fetchTechnicalIndicator(symbol, "MACD", apiKey)
+              ]);
+
+              const results = {
+                price: quote?.price || 0,
+                change_24h: quote?.changePercent || "0%",
+                sentiment: sentiment?.label || "Neutral",
+                sentiment_score: sentiment?.score || 0,
+                signals: [
+                  { indicator: "RSI(14)", value: rsi?.value?.RSI || "N/A", status: parseFloat(rsi?.value?.RSI) > 70 ? "Overbought" : parseFloat(rsi?.value?.RSI) < 30 ? "Oversold" : "Neutral" },
+                  { indicator: "MACD", value: macd?.value?.MACD || "N/A", status: parseFloat(macd?.value?.MACD) > parseFloat(macd?.value?.MACD_Signal) ? "Bullish" : "Bearish" }
+                ],
+                last_updated: new Date().toISOString()
+              };
+
+              // 3. Update Cache
+              await supabase.from("market_data_cache").upsert({
+                symbol: symbol.toUpperCase(),
+                data: results,
+                last_updated: new Date().toISOString()
+              });
+
+              return results;
+            } catch (err: any) {
+              console.error("Alpha Vantage fetch error:", err);
+              return { error: "Failed to fetch market data from Alpha Vantage." };
+            }
           },
+
         },
         finalize_strategy: {
           description: "Generate the mathematical AST JSON strategy contract for the backtesting engine simulation.",
