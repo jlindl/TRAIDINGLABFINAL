@@ -1,4 +1,4 @@
-import { OHLCV } from "../api/alpha_vantage";
+import { OHLCV } from "../backtest/indicators";
 
 // Mock data generator (Trending upwards)
 function generateMockData(count: number): OHLCV[] {
