@@ -2,17 +2,43 @@ import { z } from "zod";
 
 const alphaVantageTSRecord = z.record(z.string(), z.string());
 
-export async function fetchDailyData(symbol: string, apiKey: string) {
-    const url = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`;
+export async function fetchMarketData(symbol: string, timeframe: string = "1D", apiKey: string) {
+    let func = "TIME_SERIES_DAILY";
+    let dataKey = "Time Series (Daily)";
+
+    switch (timeframe.toUpperCase()) {
+        case "1H":
+        case "15M":
+        case "5M":
+        case "1M":
+            func = "TIME_SERIES_INTRADAY";
+            dataKey = `Time Series (${timeframe})`;
+            break;
+        case "1W":
+            func = "TIME_SERIES_WEEKLY";
+            dataKey = "Weekly Time Series";
+            break;
+        case "1M_TF": // 1M as timeframe to distinguish from monthly
+            func = "TIME_SERIES_MONTHLY";
+            dataKey = "Monthly Time Series";
+            break;
+        default:
+            func = "TIME_SERIES_DAILY";
+            dataKey = "Time Series (Daily)";
+    }
+
+    const intervalParam = func === "TIME_SERIES_INTRADAY" ? `&interval=${timeframe.toLowerCase()}` : "";
+    const url = `https://www.alphavantage.co/query?function=${func}&symbol=${symbol}${intervalParam}&apikey=${apiKey}`;
+    
     const res = await fetch(url);
     const data = await res.json();
     
-    if (!data["Time Series (Daily)"]) {
+    if (!data[dataKey]) {
         console.error("AlphaVantage Error:", data);
         return null;
     }
 
-    return data["Time Series (Daily)"];
+    return data[dataKey];
 }
 
 export async function fetchQuote(symbol: string, apiKey: string) {
