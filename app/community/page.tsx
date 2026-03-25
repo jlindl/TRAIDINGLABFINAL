@@ -8,8 +8,7 @@ import {
   Zap, 
   ArrowRight,
   ChevronRight,
-  Globe,
-  DiscordIcon // Generic for now, using MessageSquare
+  Globe
 } from "lucide-react";
 import Link from "next/link";
 
