@@ -1,4 +1,5 @@
-import { runSimulation, OHLCV, StrategyJSON, StrategyParameters } from "../lib/backtest/engine.worker";
+import { runSimulation, StrategyJSON, StrategyParameters } from "../lib/backtest/engine.worker";
+import { OHLCV } from "../lib/backtest/indicators";
 
 /**
  * QUANTUM VALIDATION SUITE
@@ -84,7 +85,7 @@ async function runValidation() {
   };
 
   const advResult = runSimulation(data, advStrategy, params);
-  if (advResult.sqn !== undefined && advResult.moneyCarlo) {
+  if (advResult.sqn !== undefined && advResult.monteCarlo) {
     console.log("   ✅ PASSED: SQN and Monte Carlo analytics generated.");
   }
 

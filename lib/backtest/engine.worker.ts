@@ -309,7 +309,7 @@ export function runSimulation(
     mdd: maxDrawdown, profitFactor, sqn,
     sharpeRatio: stdRet === 0 ? 0 : (avgRet / stdRet) * Math.sqrt(252),
     expectancy: tradePnl.length > 0 ? (grossProfit - grossLoss) / tradePnl.length : 0,
-    moneyCarlo: { luckFactor: monteLuck, ruinProb: monteRuin / 500, medianEquity: finalMcEquities[250] || equity }
+    monteCarlo: { luckFactor: monteLuck, ruinProb: monteRuin / 500, medianEquity: finalMcEquities[250] || equity }
   } as any;
 }
 
