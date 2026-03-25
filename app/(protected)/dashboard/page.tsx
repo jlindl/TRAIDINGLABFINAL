@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import Sidebar from "./components/sidebar";
 import Topbar from "./components/topbar";
 import BotsView from "./components/bots-view";
@@ -32,7 +32,7 @@ export type DashboardView =
   | "settings"
   | "feedback";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [activeView, setActiveView] = useState<DashboardView>("lab-assistant");
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<any>(null);
@@ -192,5 +192,17 @@ export default function DashboardPage() {
         onClose={() => setIsUpgradeModalOpen(false)} 
       />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-[#050505]">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-neon border-t-transparent" />
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 }
