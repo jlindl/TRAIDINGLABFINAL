@@ -47,11 +47,57 @@ export async function POST(req: Request) {
     .eq("id", user.id)
     .single();
 
-
   const userSettings = profile?.settings || {};
   const personality = userSettings.lab_assistant?.personality || "Analytical";
   const customInstructions = userSettings.lab_assistant?.custom_instructions || "";
   const backtestDefaults = JSON.stringify(userSettings.backtesting_defaults || {});
+
+  // Determine the active session ID early.
+  const isUUID = (id: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+  
+  let activeSessionId = isUUID(sessionId) ? sessionId : null;
+  
+  if (activeSessionId) {
+    // Check if session actually exists in DB
+    const { data: existing } = await supabase
+      .from("lab_sessions")
+      .select("id")
+      .eq("id", activeSessionId)
+      .single();
+    
+    if (!existing) {
+      // If client provided a UUID that doesn't exist, create it
+      const firstMessage = messages[0]?.content || "New Strategy Session";
+      const title = typeof firstMessage === 'string' 
+          ? (firstMessage.length > 50 ? firstMessage.substring(0, 47) + "..." : firstMessage)
+          : "New Strategy Session";
+          
+      await supabase
+        .from("lab_sessions")
+        .insert({ id: activeSessionId, user_id: user.id, title });
+    } else {
+      // Update timestamp of existing session
+      await supabase
+        .from("lab_sessions")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", activeSessionId);
+    }
+  } else {
+    // No ID provided, create new one
+    const firstMessage = messages[0]?.content || "New Strategy Session";
+    const title = typeof firstMessage === 'string' 
+        ? (firstMessage.length > 50 ? firstMessage.substring(0, 47) + "..." : firstMessage)
+        : "New Strategy Session";
+    
+    const { data: session, error: sErr } = await supabase
+      .from("lab_sessions")
+      .insert({ user_id: user.id, title })
+      .select()
+      .single();
+    
+    if (sErr) throw sErr;
+    activeSessionId = session.id;
+  }
 
   // Use convertToModelMessages for this specific SDK version to handle toolCalls, toolResults, and simple text correctly.
   const coreMessages = await convertToModelMessages(messages);
@@ -122,6 +168,11 @@ export async function POST(req: Request) {
     - Example Time Filtered String: \`close > SMA_50 AND hour >= 13 AND hour <= 19 AND dayOfWeek != 0 AND dayOfWeek != 6\`
       - \`parameters\` MUST strictly define the indicators used in the \`logic\`. 
       - Allowed types: ${indicatorList}.
+      - **SHORTING SUPPORT**: The engine now natively supports Shorting. 
+        - To go Long: Use \`entryLogic\`.
+        - To go Short: Use \`entryShortLogic\`.
+        - Exits: You can provide separate \`exitLogic\` (for long) and \`exitShortLogic\` (for short). If \`exitShortLogic\` is omitted, it defaults to the same as \`exitLogic\`.
+        - Risk: SL/TP and TSL are automatically inverted for Shorts (e.g., a 2% SL for a Short is placed 2% *above* the entry).
       - **MULTI-TIMEFRAME (MTF)**: Indicators can have an optional \`timeframe\` property (e.g., "1D", "4H", "1H"). If omitted, it defaults to the chart timeframe. Use this for trend filters (e.g., Daily SMA on a 5m chart).
       - Example Basic: \`{ "SMA_50": { "type": "SMA", "period": 50 } }\`.
       - Example MTF: \`{ "SMA_200_Daily": { "type": "SMA", "period": 200, "timeframe": "1D" } }\`.
@@ -134,52 +185,41 @@ export async function POST(req: Request) {
       - Example SMC (FVG/OB): \`{ "FVG": { "type": "FVG" } }\`. Defines \`{name}\` (+1 Bull, -1 Bear).
       - Example SMC (SWING): \`{ "FRACTAL": { "type": "SWING", "left": 3, "right": 3 } }\`. Defines \`{name}_HIGH\`, \`{name}_LOW\`.
     - \`exit\` parameters:
-      - ${riskParams}`,
+      - ${riskParams}
+}`,
       onFinish: async ({ text, toolCalls, usage }) => {
         if (!user) return;
 
-        let currentSessionId = sessionId;
-
         try {
-          // 1. Ensure session exists
-          if (!currentSessionId) {
-            // Create new session if none provided
-            const firstMessage = messages[0]?.content || "New Strategy Session";
-            const title = firstMessage.length > 50 ? firstMessage.substring(0, 47) + "..." : firstMessage;
-            
-            const { data: session, error: sErr } = await supabase
-              .from("lab_sessions")
-              .insert({ user_id: user.id, title })
-              .select()
-              .single();
-            
-            if (sErr) throw sErr;
-            currentSessionId = session.id;
-          } else {
-            // Update timestamp of existing session
-            await supabase
-              .from("lab_sessions")
-              .update({ updated_at: new Date().toISOString() })
-              .eq("id", currentSessionId);
-          }
-
           // 2. Save User Message (if it's the latest one not yet saved)
           const lastUserMessage = messages[messages.length - 1];
           if (lastUserMessage && lastUserMessage.role === 'user') {
-             await supabase.from("lab_messages").insert({
-               session_id: currentSessionId,
-               role: 'user',
-               content: typeof lastUserMessage.content === 'string' ? lastUserMessage.content : JSON.stringify(lastUserMessage.content),
-               attachments: lastUserMessage.experimental_attachments || []
-             });
+             // Deriving content carefully for DB persistence (must be non-empty string)
+             let dbContent = typeof lastUserMessage.content === 'string' ? lastUserMessage.content : "";
+             
+             if (!dbContent && lastUserMessage.parts && Array.isArray(lastUserMessage.parts)) {
+               dbContent = lastUserMessage.parts
+                 .filter((p: any) => p.type === 'text')
+                 .map((p: any) => p.text)
+                 .join('\n');
+             }
+
+             if (dbContent) {
+               await supabase.from("lab_messages").insert({
+                 session_id: activeSessionId,
+                 role: 'user',
+                 content: dbContent,
+                 attachments: lastUserMessage.experimental_attachments || []
+               });
+             }
           }
 
           // 3. Save Assistant Message
           await supabase.from("lab_messages").insert({
-            session_id: currentSessionId,
+            session_id: activeSessionId,
             role: 'assistant',
             content: text,
-            attachments: toolCalls ? JSON.stringify(toolCalls) : [] // Optional: handle tool calls as "attachments" or similar
+            attachments: toolCalls ? JSON.stringify(toolCalls) : [] 
           });
 
         } catch (err) {
@@ -193,7 +233,7 @@ export async function POST(req: Request) {
             symbol: z.string().describe("The stock or crypto symbol (e.g. BTC, AAPL)"),
           }),
           execute: async ({ symbol }: { symbol: string }) => {
-            const apiKey = profile?.alpha_vantage_key || process.env.ALPHA_VANTAGE_API_KEY;
+            const apiKey = process.env.ALPHA_VANTAGE_API_KEY || profile?.alpha_vantage_key;
             
             if (!apiKey) {
                return { error: "No Alpha Vantage API key found. Please add it to your profile settings." };
@@ -257,8 +297,10 @@ export async function POST(req: Request) {
             name: z.string().describe("A professional name for the strategy"),
             ticker: z.string(),
             timeframe: z.string(),
-            entryLogic: z.string().describe("STRICT MATHEMATICAL AST logic for entry (e.g. 'RSI_14 < 30')."),
-            exitLogic: z.string().describe("STRICT MATHEMATICAL AST logic for exit (e.g. 'RSI_14 > 70')."),
+            entryLogic: z.string().describe("STRICT MATHEMATICAL AST logic for Long entry (e.g. 'RSI_14 < 30')."),
+            entryShortLogic: z.string().optional().describe("STRICT MATHEMATICAL AST logic for Short entry (e.g. 'RSI_14 > 70')."),
+            exitLogic: z.string().describe("STRICT MATHEMATICAL AST logic for Long exit (e.g. 'RSI_14 > 70')."),
+            exitShortLogic: z.string().optional().describe("STRICT MATHEMATICAL AST logic for Short exit (e.g. 'RSI_14 < 30')."),
             indicators: z.record(z.string(), z.any()).describe("JSON definitions of all indicators referenced in the logic."),
             tpPct: z.number().optional().describe("Take Profit % (e.g. 0.05)"),
             slPct: z.number().optional().describe("Stop Loss % (e.g. 0.02)"),
@@ -358,7 +400,9 @@ export async function POST(req: Request) {
       },
     });
 
-    return (result as any).toUIMessageStreamResponse();
+    const response = (result as any).toUIMessageStreamResponse();
+    response.headers.set('X-Lab-Session-Id', activeSessionId);
+    return response;
   } catch (error: any) {
     console.error("Lab Assistant Chat Error:", error);
     return new Response(JSON.stringify({ error: error.message || "Failed to process chat" }), {

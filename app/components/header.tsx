@@ -28,23 +28,34 @@ export default function Header() {
     window.addEventListener("scroll", onScroll, { passive: true });
 
     const fetchUser = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (authUser) {
-        // Fetch plan from profile
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("plan")
-          .eq("id", authUser.id)
-          .single();
-        
-        setUser({ ...authUser, plan: profile?.plan || "Free" });
-      } else {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser) {
+          // Fetch plan from profile
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("plan")
+            .eq("id", authUser.id)
+            .single();
+          
+          setUser({ ...authUser, plan: profile?.plan || "Free" });
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.error("Header fetchUser error:", err);
         setUser(null);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     fetchUser();
+
+    // Safety timeout: don't let a hanging auth check block the UI for more than 3 seconds
+    const safetyTimeout = setTimeout(() => {
+      setLoading(false);
+    }, 3000);
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
@@ -69,6 +80,7 @@ export default function Header() {
     return () => {
       window.removeEventListener("scroll", onScroll);
       subscription.unsubscribe();
+      clearTimeout(safetyTimeout);
     };
   }, [supabase, router]);
 

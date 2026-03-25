@@ -11,13 +11,14 @@ export async function GET(request: Request) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const forwardedHost = request.headers.get('x-forwarded-host') // x-forwarded-host is a header that is set by some reverse proxies (e.g. Vercel)
+      const forwardedHost = request.headers.get('x-forwarded-host') 
+      const forwardedProto = request.headers.get('x-forwarded-proto') || 'https'
       const isLocalEnv = process.env.NODE_ENV === 'development'
+
       if (isLocalEnv) {
-        // we can be sure that origin is the correct origin for localhost
         return NextResponse.redirect(`${origin}${next}`)
       } else if (forwardedHost) {
-        return NextResponse.redirect(`https://${forwardedHost}${next}`)
+        return NextResponse.redirect(`${forwardedProto}://${forwardedHost}${next}`)
       } else {
         return NextResponse.redirect(`${origin}${next}`)
       }

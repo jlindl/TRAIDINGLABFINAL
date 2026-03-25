@@ -67,23 +67,32 @@ export default function LabAssistantView({
     }
   };
 
+  const isNewChatRef = useRef(false);
   const handleNewChat = () => {
-    setCurrentSessionId(null);
-    setMessages([
-      {
-        id: "welcome",
-        role: "assistant",
-        content: "Welcome to the Lab Assistant. I am specialized in high-level strategy research and chart analysis. Upload a screenshot of your charts or describe a strategy to begin.",
-      } as any
-    ]);
+    isNewChatRef.current = true;
+    setCurrentSessionId(crypto.randomUUID());
   };
 
-  // Handle welcome message manually since initialMessages can be finicky in specific types
+  // Inject welcome message for fresh chats
   useEffect(() => {
-    if (messages.length === 0 && !currentSessionId) {
+    if (isNewChatRef.current && messages.length === 0 && status === 'ready') {
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: "Welcome to the Lab Assistant. I am specialized in high-level strategy research and chart analysis. Upload a screenshot of your charts or describe a strategy to begin.",
+        } as any
+      ]);
+      isNewChatRef.current = false;
+    }
+  }, [currentSessionId, messages.length, status, setMessages]);
+
+  // Initial mount: Start a new chat if none exists
+  useEffect(() => {
+    if (!currentSessionId) {
       handleNewChat();
     }
-  }, [messages.length, currentSessionId, setMessages]);
+  }, [currentSessionId]);
 
   const isLoading = status === "streaming" || status === "submitted";
 

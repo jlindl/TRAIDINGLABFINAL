@@ -33,12 +33,29 @@ export async function fetchMarketData(symbol: string, timeframe: string = "1D", 
     const res = await fetch(url);
     const data = await res.json();
     
-    if (!data[dataKey]) {
-        console.error("AlphaVantage Error:", data);
-        return null;
+    // Check for Alpha Vantage errors
+    if (data.Note) {
+        throw new Error("ALPHA_VANTAGE_RATE_LIMIT");
+    }
+    if (data["Error Message"]) {
+        throw new Error(`ALPHA_VANTAGE_ERROR: ${data["Error Message"]}`);
     }
 
-    return data[dataKey];
+    if (!data[dataKey]) {
+        console.error("AlphaVantage Error (Missing Key):", data);
+        return []; 
+    }
+
+    // Transform to OHLCV array
+    const timeSeries = data[dataKey];
+    return Object.entries(timeSeries).map(([timestamp, values]: [string, any]) => ({
+        timestamp: new Date(timestamp).getTime(),
+        open: parseFloat(values["1. open"]),
+        high: parseFloat(values["2. high"]),
+        low: parseFloat(values["3. low"]),
+        close: parseFloat(values["4. close"]),
+        volume: parseFloat(values["5. volume"]) || 0
+    })).sort((a, b) => a.timestamp - b.timestamp);
 }
 
 export async function fetchQuote(symbol: string, apiKey: string) {

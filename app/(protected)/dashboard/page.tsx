@@ -67,30 +67,50 @@ function DashboardContent() {
   };
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) {
-        router.push("/login");
-        return;
-      }
-      
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("tier")
-        .eq("id", authUser.id)
-        .single();
+    const fetchUser = async (retryCount = 0) => {
+      try {
+        // Quick session check first
+        const { data: { session } } = await supabase.auth.getSession();
         
-      const plan = profile?.tier || "paper_trader";
-      setUser({ ...authUser, plan });
-      setLoading(false);
+        if (!session) {
+          if (retryCount < 2) {
+            // Give Supabase a moment to persist the session after redirect
+            console.log(`No session found, retry ${retryCount + 1}...`);
+            setTimeout(() => fetchUser(retryCount + 1), 500);
+            return;
+          }
+          console.warn("No session after retries, redirecting to login.");
+          router.push("/login");
+          return;
+        }
 
-      // Trigger Upgrade Modal if Paper Trader and not shown this session
-      const hasSeenModal = sessionStorage.getItem("has-seen-upgrade-modal");
-      if (plan === "paper_trader" && !hasSeenModal) {
-        setTimeout(() => {
-          setIsUpgradeModalOpen(true);
-          sessionStorage.setItem("has-seen-upgrade-modal", "true");
-        }, 1500); // Slight delay for premium feel
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          router.push("/login");
+          return;
+        }
+        
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("tier")
+          .eq("id", authUser.id)
+          .single();
+          
+        const plan = profile?.tier || "paper_trader";
+        setUser({ ...authUser, plan });
+        setLoading(false);
+
+        // Trigger Upgrade Modal if Paper Trader and not shown this session
+        const hasSeenModal = sessionStorage.getItem("has-seen-upgrade-modal");
+        if (plan === "paper_trader" && !hasSeenModal) {
+          setTimeout(() => {
+            setIsUpgradeModalOpen(true);
+            sessionStorage.setItem("has-seen-upgrade-modal", "true");
+          }, 1500); 
+        }
+      } catch (err) {
+        console.error("Dashboard fetchUser failed:", err);
+        router.push("/login");
       }
     };
 

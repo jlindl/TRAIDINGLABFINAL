@@ -116,10 +116,13 @@ export default function SessionSidebar({
         ) : (
           <div className={`space-y-1 ${isCollapsed ? 'flex flex-col items-center pt-2' : ''}`}>
             {filteredSessions.map((session) => (
-              <button
+              <div
                 key={session.id}
                 onClick={() => onSelectSession(session.id)}
-                className={`group flex transition-all relative ${
+                onKeyDown={(e) => e.key === 'Enter' && onSelectSession(session.id)}
+                role="button"
+                tabIndex={0}
+                className={`group flex cursor-pointer transition-all relative ${
                   isCollapsed ? 'h-12 w-12 items-center justify-center rounded-xl' : 'w-full flex-col gap-1 p-3 rounded-xl border'
                 } ${
                   currentSessionId === session.id 
@@ -135,7 +138,7 @@ export default function SessionSidebar({
                       <div className="flex items-center gap-1">
                         <button 
                           onClick={(e) => deleteSession(e, session.id)}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-all"
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-400 transition-all focus:outline-none"
                         >
                           <Trash2 className="h-3 w-3" />
                         </button>
@@ -157,7 +160,7 @@ export default function SessionSidebar({
                      )}
                   </div>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         )}

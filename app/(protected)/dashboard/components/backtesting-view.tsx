@@ -33,7 +33,7 @@ interface BacktestingViewProps {
 export default function BacktestingView({ initialStrategy, onClearInitial }: BacktestingViewProps) {
   const [symbol, setSymbol] = useState("BTC");
   const [timeframe, setTimeframe] = useState("1D");
-  const [strategyJson, setStrategyJson] = useState(JSON.stringify(DEFAULT_STRATEGY, null, 2));
+  const [strategyJson, setStrategyJson] = useState(DEFAULT_STRATEGY);
   const [csvFile, setCsvFile] = useState<File | null>(null);
   
   const [isRunning, setIsRunning] = useState(false);

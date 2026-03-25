@@ -17,7 +17,7 @@ export async function GET(req: Request) {
         .eq("id", user.id)
         .single();
 
-    const apiKey = profile?.alpha_vantage_key || process.env.ALPHA_VANTAGE_API_KEY;
+    const apiKey = process.env.ALPHA_VANTAGE_API_KEY || profile?.alpha_vantage_key;
 
     if (!apiKey) {
         return NextResponse.json({ error: "API Key missing" }, { status: 400 });

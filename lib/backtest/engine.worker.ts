@@ -61,9 +61,11 @@ export interface StrategyJSON {
   };
   entry: {
     logic: string; 
+    shortLogic?: string; // Optional: separate logic for shorts
   };
   exit: {
     logic: string;
+    shortLogic?: string; // Optional: separate logic for short exits
     tpPct?: number;
     slPct?: number;
     tslPct?: number; 
@@ -158,6 +160,7 @@ export function runSimulation(
   let equity = initialCap;
   let cash = initialCap;
   let positionSize = 0; 
+  let posType: 'LONG' | 'SHORT' | null = null;
   let entryPrice = 0;
   let entryIndex = 0;
   
@@ -191,75 +194,179 @@ export function runSimulation(
         context[`${key}_prev`] = i > 1 ? indData[key][i - 2] : indData[key][i - 1];
     }
 
-    const entrySignal = safeEvaluate(strategy.entry.logic, context);
-    const exitSignal = safeEvaluate(strategy.exit.logic, context);
+    const entryLong = safeEvaluate(strategy.entry.logic, context);
+    const entryShort = strategy.entry.shortLogic ? safeEvaluate(strategy.entry.shortLogic, context) : false;
+    const exitLong = safeEvaluate(strategy.exit.logic, context);
+    const exitShort = strategy.exit.shortLogic ? safeEvaluate(strategy.exit.shortLogic, context) : exitLong;
 
-    // ORDER EXECUTION
-    if (positionSize === 0 && entrySignal) {
-        const execPrice = candle.open;
-        const totalExecPrice = execPrice + (execPrice * comms) + (execPrice * ((params.slippageBps || 0) / 10000));
-        const alloc = params.positionSizing ?? 1.0;
-        const capitalToDeploy = cash * alloc;
-        
-        positionSize = capitalToDeploy / totalExecPrice;
-        cash -= capitalToDeploy;
-        entryPrice = totalExecPrice;
-        highestPriceSinceEntry = candle.high;
-        lowestPriceSinceEntry = candle.low;
-        entryIndex = i;
-        partialsExecuted = [];
-        stopLossAdjusted = 0;
-        trades.push({ timestamp: candle.timestamp, price: totalExecPrice, type: 'BUY', size: positionSize });
+    // ORDER EXECUTION (ENTRY)
+    if (posType === null) {
+        if (entryLong || entryShort) {
+            posType = entryLong ? 'LONG' : 'SHORT';
+            const execPrice = candle.open;
+            const slippageVal = (execPrice * ((params.slippageBps || 0) / 10000));
+            
+            // LONG entry: paying ask (price + slippage), SHORT entry: receiving bid (price - slippage)
+            const totalExecPrice = posType === 'LONG' 
+                ? execPrice + (execPrice * comms) + slippageVal
+                : execPrice - (execPrice * comms) - slippageVal;
+
+            const alloc = params.positionSizing ?? 1.0;
+            const capitalToDeploy = cash * alloc;
+            
+            positionSize = capitalToDeploy / execPrice; // Use raw price for unit calculation
+            
+            if (posType === 'LONG') {
+                cash -= (positionSize * totalExecPrice);
+            } else {
+                cash += (positionSize * totalExecPrice);
+            }
+
+            entryPrice = totalExecPrice;
+            highestPriceSinceEntry = candle.high;
+            lowestPriceSinceEntry = candle.low;
+            entryIndex = i;
+            partialsExecuted = [];
+            stopLossAdjusted = 0;
+            trades.push({ 
+                timestamp: candle.timestamp, 
+                price: totalExecPrice, 
+                type: posType === 'LONG' ? 'BUY' : 'SELL', 
+                size: positionSize 
+            });
+        }
     } 
-    else if (positionSize > 0) {
+    // ORDER EXECUTION (MANAGEMENT / EXIT)
+    else if (posType !== null) {
         if (candle.high > highestPriceSinceEntry) highestPriceSinceEntry = candle.high;
         if (candle.low < lowestPriceSinceEntry) lowestPriceSinceEntry = candle.low;
 
-        // Break-even
-        if (!stopLossAdjusted && strategy.exit.bePct && candle.high >= entryPrice * (1 + strategy.exit.bePct)) {
-            stopLossAdjusted = entryPrice;
+        const isLong = posType === 'LONG';
+
+        // Break-even logic
+        if (!stopLossAdjusted && strategy.exit.bePct) {
+            const triggered = isLong 
+                ? candle.high >= entryPrice * (1 + strategy.exit.bePct)
+                : candle.low <= entryPrice * (1 - strategy.exit.bePct);
+            if (triggered) stopLossAdjusted = entryPrice;
         }
 
         // Multi-tier Partial Profit
         if (strategy.exit.partialTps) {
            strategy.exit.partialTps.forEach((tp, idx) => {
-              if (!partialsExecuted.includes(idx) && candle.high >= entryPrice * (1 + tp.pct)) {
+              const triggered = isLong 
+                ? candle.high >= entryPrice * (1 + tp.pct)
+                : candle.low <= entryPrice * (1 - tp.pct);
+
+              if (!partialsExecuted.includes(idx) && triggered) {
                  partialsExecuted.push(idx);
                  const sizeToClose = positionSize * tp.size;
-                 const ptpExecPrice = Math.max(candle.open, entryPrice * (1 + tp.pct));
-                 const totalSellPrice = ptpExecPrice - (ptpExecPrice * comms) - (ptpExecPrice * ((params.slippageBps || 0) / 10000));
-                 cash += sizeToClose * totalSellPrice;
+                 const ptpExecPrice = isLong 
+                    ? Math.max(candle.open, entryPrice * (1 + tp.pct))
+                    : Math.min(candle.open, entryPrice * (1 - tp.pct));
+                 
+                 const slippageVal = (ptpExecPrice * ((params.slippageBps || 0) / 10000));
+                 const totalExitPrice = isLong
+                    ? ptpExecPrice - (ptpExecPrice * comms) - slippageVal
+                    : ptpExecPrice + (ptpExecPrice * comms) + slippageVal;
+
+                 if (isLong) cash += sizeToClose * totalExitPrice;
+                 else cash -= sizeToClose * totalExitPrice;
+
                  positionSize -= sizeToClose;
-                 trades.push({ timestamp: candle.timestamp, price: totalSellPrice, type: 'PARTIAL_SELL', size: sizeToClose, pnl: (totalSellPrice - entryPrice) * sizeToClose });
+                 const pnl = isLong 
+                    ? (totalExitPrice - entryPrice) * sizeToClose
+                    : (entryPrice - totalExitPrice) * sizeToClose;
+
+                 trades.push({ 
+                     timestamp: candle.timestamp, 
+                     price: totalExitPrice, 
+                     type: 'PARTIAL_SELL', 
+                     size: sizeToClose, 
+                     pnl 
+                 });
               }
            });
         }
 
         // Exit Checks
-        let shouldExit = exitSignal;
-        let exitExecPrice = candle.open;
+        let shouldExit = isLong ? exitLong : exitShort;
+        let exitPriceTarget = candle.open;
 
-        const sl = stopLossAdjusted || (strategy.exit.slPct ? entryPrice * (1 - strategy.exit.slPct) : 0);
-        if (sl > 0 && candle.low <= sl) { shouldExit = true; exitExecPrice = Math.min(candle.open, sl); }
-        if (!shouldExit && strategy.exit.tslPct && candle.low <= highestPriceSinceEntry * (1 - strategy.exit.tslPct)) { shouldExit = true; exitExecPrice = Math.min(candle.open, highestPriceSinceEntry * (1 - strategy.exit.tslPct)); }
-        if (!shouldExit && strategy.exit.tpPct && candle.high >= entryPrice * (1 + strategy.exit.tpPct)) { shouldExit = true; exitExecPrice = Math.max(candle.open, entryPrice * (1 + strategy.exit.tpPct)); }
-        if (!shouldExit && strategy.exit.expiryBars && (i - entryIndex) >= strategy.exit.expiryBars) { shouldExit = true; exitExecPrice = candle.open; }
-        if (!shouldExit && strategy.exit.endOfDayExit && candleDate.getUTCHours() === 20 && candleDate.getUTCMinutes() >= 30) { shouldExit = true; exitExecPrice = candle.close; }
+        // Stop Loss
+        const sl = stopLossAdjusted || (strategy.exit.slPct 
+            ? (isLong ? entryPrice * (1 - strategy.exit.slPct) : entryPrice * (1 + strategy.exit.slPct)) 
+            : 0);
+        
+        if (sl > 0) {
+            if (isLong && candle.low <= sl) { shouldExit = true; exitPriceTarget = Math.min(candle.open, sl); }
+            if (!isLong && candle.high >= sl) { shouldExit = true; exitPriceTarget = Math.max(candle.open, sl); }
+        }
+
+        // Trailing Stop
+        if (!shouldExit && strategy.exit.tslPct) {
+            if (isLong) {
+                const tsl = highestPriceSinceEntry * (1 - strategy.exit.tslPct);
+                if (candle.low <= tsl) { shouldExit = true; exitPriceTarget = Math.min(candle.open, tsl); }
+            } else {
+                const tsl = lowestPriceSinceEntry * (1 + strategy.exit.tslPct);
+                if (candle.high >= tsl) { shouldExit = true; exitPriceTarget = Math.max(candle.open, tsl); }
+            }
+        }
+
+        // Take Profit
+        if (!shouldExit && strategy.exit.tpPct) {
+            if (isLong) {
+                const tp = entryPrice * (1 + strategy.exit.tpPct);
+                if (candle.high >= tp) { shouldExit = true; exitPriceTarget = Math.max(candle.open, tp); }
+            } else {
+                const tp = entryPrice * (1 - strategy.exit.tpPct);
+                if (candle.low <= tp) { shouldExit = true; exitPriceTarget = Math.min(candle.open, tp); }
+            }
+        }
+
+        // Expiry & EOD
+        if (!shouldExit && strategy.exit.expiryBars && (i - entryIndex) >= strategy.exit.expiryBars) { shouldExit = true; exitPriceTarget = candle.open; }
+        if (!shouldExit && strategy.exit.endOfDayExit && candleDate.getUTCHours() === 20 && candleDate.getUTCMinutes() >= 30) { shouldExit = true; exitPriceTarget = candle.close; }
 
         if (shouldExit) {
-             const execPrice = exitExecPrice - (exitExecPrice * comms) - (exitExecPrice * ((params.slippageBps || 0) / 10000));
-             const pnl = (positionSize * execPrice) - (positionSize * entryPrice);
-             cash += (positionSize * execPrice);
+             const slippageVal = (exitPriceTarget * ((params.slippageBps || 0) / 10000));
+             const finalExitPrice = isLong
+                ? exitPriceTarget - (exitPriceTarget * comms) - slippageVal
+                : exitPriceTarget + (exitPriceTarget * comms) + slippageVal;
+
+             const pnl = isLong
+                ? (positionSize * finalExitPrice) - (positionSize * entryPrice)
+                : (positionSize * entryPrice) - (positionSize * finalExitPrice);
+             
+             if (isLong) cash += (positionSize * finalExitPrice);
+             else cash -= (positionSize * finalExitPrice);
+
              if (pnl > 0) totalWins++; else totalLosses++;
+             
              trades.push({ 
-               timestamp: candle.timestamp, price: execPrice, type: 'SELL', size: positionSize, pnl,
-               mfe: (highestPriceSinceEntry - entryPrice) / entryPrice * 100, mae: (lowestPriceSinceEntry - entryPrice) / entryPrice * 100, duration: i - entryIndex
+               timestamp: candle.timestamp, 
+               price: finalExitPrice, 
+               type: isLong ? 'SELL' : 'BUY', // Buying back a short is a 'BUY' order
+               size: positionSize, 
+               pnl,
+               mfe: isLong ? (highestPriceSinceEntry - entryPrice) / entryPrice * 100 : (entryPrice - lowestPriceSinceEntry) / entryPrice * 100,
+               mae: isLong ? (lowestPriceSinceEntry - entryPrice) / entryPrice * 100 : (entryPrice - highestPriceSinceEntry) / entryPrice * 100,
+               duration: i - entryIndex
              });
-             positionSize = 0; entryPrice = 0;
+             
+             positionSize = 0; entryPrice = 0; posType = null;
         }
     }
 
-    equity = cash + (positionSize * candle.close);
+    // Equity calculation
+    if (posType === 'LONG') {
+        equity = cash + (positionSize * candle.close);
+    } else if (posType === 'SHORT') {
+        equity = cash - (positionSize * candle.close);
+    } else {
+        equity = cash;
+    }
     equityCurve.push({ timestamp: candle.timestamp, equity });
     benchmarkCurve.push({ timestamp: candle.timestamp, equity: benchShares * candle.close });
     if (equity > peakEquity) peakEquity = equity;
@@ -268,12 +375,32 @@ export function runSimulation(
   }
 
   // Force close final
-  if (positionSize > 0) {
+  if (posType !== null) {
       const fc = data[data.length - 1];
-      const pnl = (positionSize * (fc.close - (fc.close * comms))) - (positionSize * entryPrice);
-      cash += (positionSize * (fc.close - (fc.close * comms)));
+      const isLong = posType === 'LONG';
+      const fcPrice = fc.close;
+      const slippageVal = (fcPrice * ((params.slippageBps || 0) / 10000));
+      const finalExitPrice = isLong 
+        ? fcPrice - (fcPrice * comms) - slippageVal
+        : fcPrice + (fcPrice * comms) + slippageVal;
+
+      const pnl = isLong
+        ? (positionSize * finalExitPrice) - (positionSize * entryPrice)
+        : (positionSize * entryPrice) - (positionSize * finalExitPrice);
+      
+      if (isLong) cash += (positionSize * finalExitPrice);
+      else cash -= (positionSize * finalExitPrice);
+
       if (pnl > 0) totalWins++; else totalLosses++;
-      trades.push({ timestamp: fc.timestamp, price: fc.close, type: 'SELL', size: positionSize, pnl, duration: data.length - entryIndex });
+      trades.push({ 
+        timestamp: fc.timestamp, 
+        price: finalExitPrice, 
+        type: isLong ? 'SELL' : 'BUY', 
+        size: positionSize, 
+        pnl, 
+        duration: data.length - entryIndex 
+      });
+      posType = null;
   }
 
   // STATS
@@ -304,7 +431,7 @@ export function runSimulation(
 
   return {
     equityCurve, benchmarkCurve, trades, finalEquity: cash,
-    totalTrades: trades.filter(t => t.type !== 'BUY').length,
+    totalTrades: tradePnl.length,
     winRate: totalWins / (totalWins + totalLosses || 1),
     mdd: maxDrawdown, profitFactor, sqn,
     sharpeRatio: stdRet === 0 ? 0 : (avgRet / stdRet) * Math.sqrt(252),
