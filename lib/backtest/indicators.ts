@@ -845,3 +845,118 @@ export function calculateOrderBlocks(data: OHLCV[], impulsiveThresholdPeriods: n
   
   return ob;
 }
+
+/**
+ * Ichimoku Cloud (Ichimoku Kinko Hyo)
+ * Tenkan-sen (Conversion Line): (9-period high + 9-period low) / 2
+ * Kijun-sen (Base Line): (26-period high + 26-period low) / 2
+ * Senkou Span A (Leading Span A): (Tenkan-sen + Kijun-sen) / 2 (plotted 26 periods ahead)
+ * Senkou Span B (Leading Span B): (52-period high + 52-period low) / 2 (plotted 26 periods ahead)
+ * Chikou Span (Lagging Span): Close plotted 26 periods behind
+ */
+export function calculateIchimoku(data: OHLCV[], tenkanPeriod: number = 9, kijunPeriod: number = 26, senkouBPeriod: number = 52, displacement: number = 26): { 
+  tenkan: number[], 
+  kijun: number[], 
+  senkouA: number[], 
+  senkouB: number[], 
+  chikou: number[] 
+} {
+  const tenkan = new Array(data.length).fill(NaN);
+  const kijun = new Array(data.length).fill(NaN);
+  const senkouA = new Array(data.length).fill(NaN);
+  const senkouB = new Array(data.length).fill(NaN);
+  const chikou = new Array(data.length).fill(NaN);
+
+  const getHighLow = (start: number, end: number) => {
+    let h = -Infinity, l = Infinity;
+    for (let i = start; i <= end; i++) {
+       if (data[i].high > h) h = data[i].high;
+       if (data[i].low < l) l = data[i].low;
+    }
+    return { h, l };
+  };
+
+  for (let i = 0; i < data.length; i++) {
+    if (i >= tenkanPeriod - 1) {
+      const { h, l } = getHighLow(i - tenkanPeriod + 1, i);
+      tenkan[i] = (h + l) / 2;
+    }
+    if (i >= kijunPeriod - 1) {
+      const { h, l } = getHighLow(i - kijunPeriod + 1, i);
+      kijun[i] = (h + l) / 2;
+    }
+  }
+
+  for (let i = 0; i < data.length; i++) {
+    // Senkou A & B are plotted 26 periods AHEAD
+    // In our sequential array, we calculate them and put them at index i + displacement
+    const targetIdx = i + displacement;
+    if (targetIdx < data.length) {
+       if (!isNaN(tenkan[i]) && !isNaN(kijun[i])) {
+          senkouA[targetIdx] = (tenkan[i] + kijun[i]) / 2;
+       }
+       if (i >= senkouBPeriod - 1) {
+          const { h, l } = getHighLow(i - senkouBPeriod + 1, i);
+          senkouB[targetIdx] = (h + l) / 2;
+       }
+    }
+    
+    // Chikou is plotted 26 periods BEHIND
+    const sourceIdx = i + displacement;
+    if (sourceIdx < data.length) {
+       chikou[i] = data[sourceIdx].close;
+    }
+  }
+
+  return { tenkan, kijun, senkouA, senkouB, chikou };
+}
+
+/**
+ * ATR Trailing Stop (Chandelier Exit variant)
+ * Calculates a dynamic stop based on ATR and recent high/low.
+ */
+export function calculateATRTrailingStop(data: OHLCV[], period: number = 22, multiplier: number = 3): number[] {
+  const atr = calculateATR(data, period);
+  const stop = new Array(data.length).fill(NaN);
+  let isLong = true;
+
+  for (let i = period; i < data.length; i++) {
+    const prevStop = stop[i-1];
+    const currentAtr = atr[i];
+    
+    if (isLong) {
+      const newStop = data[i].close - (currentAtr * multiplier);
+      stop[i] = isNaN(prevStop) ? newStop : Math.max(newStop, prevStop);
+      if (data[i].close < stop[i]) {
+        isLong = false;
+        stop[i] = data[i].close + (currentAtr * multiplier);
+      }
+    } else {
+      const newStop = data[i].close + (currentAtr * multiplier);
+      stop[i] = isNaN(prevStop) ? newStop : Math.min(newStop, prevStop);
+      if (data[i].close > stop[i]) {
+        isLong = true;
+        stop[i] = data[i].close - (currentAtr * multiplier);
+      }
+    }
+  }
+  return stop;
+}
+
+/**
+ * Liquidity Voids
+ * Detects large gaps in price action that act as magnets for future returns.
+ * Similar to FVG but specifically looking for 'untested' expanses.
+ */
+export function calculateLiquidityVoids(data: OHLCV[], checkPeriod: number = 20): number[] {
+  const voids = new Array(data.length).fill(0);
+  const threshold = calculateATR(data, checkPeriod).map(a => a * 2); // 2x ATR expansion
+
+  for (let i = 1; i < data.length; i++) {
+     const candleSize = Math.abs(data[i].close - data[i].open);
+     if (candleSize > threshold[i]) {
+        voids[i] = data[i].close > data[i].open ? 1 : -1;
+     }
+  }
+  return voids;
+}

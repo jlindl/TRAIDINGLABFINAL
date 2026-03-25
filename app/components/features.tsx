@@ -3,121 +3,55 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 
-/* ── Live Stats Tile ─────────────────── */
-function LiveStatsTile() {
-  const [trades, setTrades] = useState(128_493);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTrades((prev) => prev + Math.floor(Math.random() * 7 + 1));
-    }, 1800);
-    return () => clearInterval(interval);
-  }, []);
-
+/* ── Feature Tile Component ── */
+function FeatureTile({ 
+  title, 
+  subtitle, 
+  description, 
+  img, 
+  icon, 
+  className = "" 
+}: { 
+  title: string; 
+  subtitle: string; 
+  description: string; 
+  img: string; 
+  icon: React.ReactNode; 
+  className?: string;
+}) {
   return (
-    <div className="glass-edge shimmer flex flex-col justify-between p-8 h-full">
-      <div>
-        <span className="font-mono text-xs uppercase tracking-[0.2em] text-neon/70">
-          Live Exchange
-        </span>
-        <h3 className="mt-3 text-3xl font-bold tracking-tight text-white">
-          {trades.toLocaleString()}
-        </h3>
-        <p className="mt-1 text-sm text-white/40">Trades executed today</p>
-      </div>
-
-      <div className="mt-8 flex items-center gap-3">
-        {/* Pulse */}
-        <div className="relative flex h-3 w-3 items-center justify-center">
-          <span className="absolute inline-flex h-full w-full rounded-full bg-neon opacity-60 animate-pulse-ring" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-neon" />
+    <motion.div
+      whileHover={{ scale: 1.01, borderColor: "rgba(85, 255, 0, 0.3)" }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className={`glass-edge group relative flex flex-col justify-end p-8 h-full overflow-hidden ${className}`}
+    >
+      {/* Background Visual */}
+      <div 
+        className="absolute inset-0 z-0 bg-cover bg-center grayscale opacity-10 group-hover:opacity-30 group-hover:grayscale-0 transition-all duration-700"
+        style={{ backgroundImage: `url(${img})` }} 
+      />
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent" />
+      
+      <div className="relative z-10">
+        <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-xl bg-neon/10 text-neon border border-neon/20 shadow-[0_0_15px_rgba(0,255,136,0.1)] group-hover:shadow-[0_0_25px_rgba(0,255,136,0.2)] transition-all">
+          {icon}
         </div>
-        <span className="font-mono text-xs text-[#55ff00]">
-          Systems Operational
+        <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-neon/70">
+          {subtitle}
         </span>
+        <h3 className="mt-2 text-2xl font-bold text-white tracking-tight">{title}</h3>
+        <p className="mt-3 text-sm text-white/40 leading-relaxed max-w-[280px]">
+          {description}
+        </p>
       </div>
 
-      {/* Decorative mini chart */}
-      <svg
-        className="mt-6 h-16 w-full opacity-20"
-        viewBox="0 0 200 60"
-        fill="none"
-        preserveAspectRatio="none"
-      >
-        <polyline
-          points="0,45 20,40 40,48 60,30 80,35 100,20 120,25 140,15 160,22 180,10 200,18"
-          stroke="url(#stat-grad)"
-          strokeWidth="2"
-          fill="none"
-        />
-        <defs>
-          <linearGradient id="stat-grad" x1="0" y1="0" x2="200" y2="0" gradientUnits="userSpaceOnUse">
-            <stop stopColor="var(--neon)" />
-            <stop offset="1" stopColor="var(--neon-dim)" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-  );
-}
-
-/* ── AI Sphere Tile ──────────────────── */
-function AiSphereTile() {
-  return (
-    <div className="glass-edge shimmer flex flex-col items-center justify-center p-8 h-full">
-      <div className="relative h-36 w-36" style={{ perspective: "600px" }}>
-        {/* Rotating wireframe rings */}
-        {[0, 60, 120].map((rot) => (
-          <div
-            key={rot}
-            className="absolute inset-0 animate-spin-slow rounded-full border border-neon/25"
-            style={{
-              transform: `rotateY(${rot}deg) rotateX(15deg)`,
-              animationDuration: `${12 + rot * 0.02}s`,
-            }}
-          />
-        ))}
-        {/* Core glow */}
-        <div className="absolute inset-0 m-auto h-8 w-8 rounded-full bg-neon/30 blur-xl" />
-        <div className="absolute inset-0 m-auto h-3 w-3 rounded-full bg-neon" />
+      {/* Decorative Corner Trace */}
+      <div className="absolute top-0 right-0 h-16 w-16 opacity-10 group-hover:opacity-30 transition-opacity">
+        <svg viewBox="0 0 100 100" className="h-full w-full stroke-neon fill-none" strokeWidth="2">
+          <path d="M70 10 H90 V30" />
+        </svg>
       </div>
-      <span className="mt-6 font-mono text-xs uppercase tracking-[0.2em] text-neon/70">
-        AI Engine
-      </span>
-      <p className="mt-1 text-sm text-white/40 text-center">
-        Neural strategy optimization
-      </p>
-    </div>
-  );
-}
-
-/* ── Speed Tile ──────────────────────── */
-function SpeedTile() {
-  return (
-    <div className="glass-edge shimmer flex flex-col items-center justify-center p-8 h-full">
-      <div className="relative flex items-center justify-center">
-        {/* Ping circles */}
-        <span className="absolute inline-flex h-20 w-20 rounded-full border border-neon/20 animate-pulse-ring" />
-        <span
-          className="absolute inline-flex h-14 w-14 rounded-full border border-neon/15 animate-pulse-ring"
-          style={{ animationDelay: "0.5s" }}
-        />
-        <div className="relative flex flex-col items-center">
-          <span className="text-4xl font-bold text-white tracking-tight">
-            {"<"}1
-          </span>
-          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-neon/70">
-            ms
-          </span>
-        </div>
-      </div>
-      <span className="mt-6 font-mono text-xs uppercase tracking-[0.2em] text-neon/70">
-        Execution Latency
-      </span>
-      <p className="mt-1 text-sm text-white/40 text-center">
-        Co-located infrastructure
-      </p>
-    </div>
+    </motion.div>
   );
 }
 
@@ -130,91 +64,89 @@ export default function Features() {
     <section
       id="features"
       ref={sectionRef}
-      className="relative py-[var(--section-py)] px-6 lg:px-12"
+      className="relative py-[var(--section-py)] mb-[10vh] px-6 lg:px-12"
     >
       <div className="mx-auto max-w-7xl">
         {/* Section Header */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6 }}
-          className="mb-16 text-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={isInView ? { opacity: 1, y: 0 } : {}}
+            transition={{ duration: 0.6 }}
+            className="mb-20 text-center lg:text-left"
         >
-          <span className="font-mono text-xs uppercase tracking-[0.25em] text-neon/70">
-            Core Infrastructure
-          </span>
-          <h2 className="gradient-text mt-3 text-4xl font-bold tracking-tight sm:text-5xl">
-            Built for Performance
-          </h2>
-          <p className="mx-auto mt-4 max-w-xl text-lg text-white/40">
-            Every millisecond counts. Our infrastructure is architected from the
-            ground up for institutional-grade speed and reliability.
-          </p>
+            <span className="font-mono text-xs uppercase tracking-[0.3em] text-neon/60">
+                Institutional Infrastructure
+            </span>
+            <h2 className="gradient-text mt-4 text-4xl font-black tracking-[-0.05em] sm:text-6xl">
+                THE QUANTUM ADVANTAGE.
+            </h2>
+            <p className="mt-6 max-w-2xl text-lg text-white/30 leading-relaxed font-medium">
+                Eliminate emotional fatigue and chart noise. TradingLab provides the 
+                backtesting speed and AI intelligence reserved for elite institutions.
+            </p>
         </motion.div>
 
-        {/* Bento Grid */}
-        <motion.div
-          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 lg:grid-rows-2"
-          initial={{ opacity: 0, y: 30 }}
-          animate={isInView ? { opacity: 1, y: 0 } : {}}
-          transition={{ duration: 0.6, delay: 0.2 }}
-        >
-          {/* Tile A — spans 2 rows on large */}
-          <motion.div
-            className="lg:row-span-2"
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring" as const, stiffness: 300, damping: 20 }}
-          >
-            <LiveStatsTile />
-          </motion.div>
+        {/* Bento Grid layout */}
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          
+          {/* Tile 1: Backtesting (Large) */}
+          <div className="lg:row-span-2">
+            <FeatureTile 
+              img="/assets/landing/feature-backtest.png"
+              subtitle="Precision Testing"
+              title="Quantum Backtesting"
+              description="Analyze years of historical tick data in seconds with zero survivorship bias and total precision."
+              icon={(
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              )}
+            />
+          </div>
 
-          {/* Tile B */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring" as const, stiffness: 300, damping: 20 }}
-          >
-            <AiSphereTile />
-          </motion.div>
+          {/* Tile 2: AI Lab (Standard) */}
+          <FeatureTile 
+            img="/assets/landing/ai-hologram.png"
+            subtitle="Neural Intelligence"
+            title="AI Lab Assistant"
+            description="Speak your market intuition and watch the AI translate it into production-ready algorithmic logic."
+            icon={(
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+            )}
+          />
 
-          {/* Tile C */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring" as const, stiffness: 300, damping: 20 }}
-          >
-            <SpeedTile />
-          </motion.div>
+          {/* Tile 3: Automation (Standard) */}
+          <FeatureTile 
+            img="/assets/landing/feature-automation.png"
+            subtitle="Direct Execution"
+            title="Precision Automation"
+            description="Deploy validated strategies directly to secure execution contracts with institutional routing."
+            icon={(
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2 1.5 3 3.5 3h9c2 0 3.5-1 3.5-3V7c0-2-1.5-3-3.5-3h-9C5.5 4 4 5 4 7z" />
+              </svg>
+            )}
+          />
 
-          {/* Tile D — Extra stat */}
-          <motion.div
-            className="lg:col-span-2"
-            whileHover={{ scale: 1.02 }}
-            transition={{ type: "spring" as const, stiffness: 300, damping: 20 }}
-          >
-            <div className="glass-edge shimmer flex items-center justify-between gap-8 p-8 h-full">
-              <div>
-                <span className="font-mono text-xs uppercase tracking-[0.2em] text-neon/70">
-                  Global Coverage
-                </span>
-                <h3 className="mt-2 text-3xl font-bold tracking-tight text-white">
-                  150+ Markets
-                </h3>
-                <p className="mt-1 text-sm text-white/40">
-                  Crypto, Forex, Equities & Commodities
-                </p>
-              </div>
-              <div className="hidden sm:flex gap-3">
-                {["NYSE", "NASDAQ", "LSE", "BINANCE", "CME"].map((ex) => (
-                  <span
-                    key={ex}
-                    className="rounded-full border border-white/10 px-3 py-1 font-mono text-[10px] uppercase tracking-wider text-white/40"
-                  >
-                    {ex}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
+          {/* Tile 4: Markets (Wide) */}
+          <div className="lg:col-span-2">
+             <FeatureTile 
+                img="/assets/landing/market-noise.png"
+                subtitle="Global Connectivity"
+                title="150+ Audited Markets"
+                description="Trade Crypto, FX, and Equities with co-located hardware and zero-slippage connectivity."
+                className="lg:min-h-[300px]"
+                icon={(
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                  </svg>
+                )}
+             />
+          </div>
+
+        </div>
       </div>
     </section>
   );

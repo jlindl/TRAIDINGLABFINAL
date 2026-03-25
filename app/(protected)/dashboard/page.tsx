@@ -13,8 +13,10 @@ import DeploymentView from "./components/deployment-view";
 import HelpView from "./components/help-view";
 import SavedStrategiesView from "./components/strategies/saved-strategies-view";
 import SettingsView from "./components/settings-view";
+import FeedbackView from "./components/feedback-view";
+import UpgradeModal from "./components/upgrade-modal";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 
 export type DashboardView = 
@@ -27,15 +29,42 @@ export type DashboardView =
   | "deployment" 
   | "saved-strategies"
   | "help"
-  | "settings";
+  | "settings"
+  | "feedback";
 
 export default function DashboardPage() {
   const [activeView, setActiveView] = useState<DashboardView>("lab-assistant");
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [selectedStrategy, setSelectedStrategy] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Handle ?showUpgrade=true redirect from Billing Portal
+  useEffect(() => {
+    if (searchParams.get("showUpgrade") === "true") {
+      setIsUpgradeModalOpen(true);
+      // Clean URL without page reload
+      const url = new URL(window.location.href);
+      url.searchParams.delete("showUpgrade");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [searchParams]);
+
+  // Load sidebar state from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed");
+    if (saved !== null) setIsSidebarCollapsed(saved === "true");
+  }, []);
+
+  const toggleSidebar = () => {
+    const newState = !isSidebarCollapsed;
+    setIsSidebarCollapsed(newState);
+    localStorage.setItem("sidebar-collapsed", String(newState));
+  };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -47,12 +76,22 @@ export default function DashboardPage() {
       
       const { data: profile } = await supabase
         .from("profiles")
-        .select("plan")
+        .select("tier")
         .eq("id", authUser.id)
         .single();
         
-      setUser({ ...authUser, plan: profile?.plan || "Free" });
+      const plan = profile?.tier || "paper_trader";
+      setUser({ ...authUser, plan });
       setLoading(false);
+
+      // Trigger Upgrade Modal if Paper Trader and not shown this session
+      const hasSeenModal = sessionStorage.getItem("has-seen-upgrade-modal");
+      if (plan === "paper_trader" && !hasSeenModal) {
+        setTimeout(() => {
+          setIsUpgradeModalOpen(true);
+          sessionStorage.setItem("has-seen-upgrade-modal", "true");
+        }, 1500); // Slight delay for premium feel
+      }
     };
 
     fetchUser();
@@ -73,9 +112,22 @@ export default function DashboardPage() {
       case "ghost-writer": return <GhostWriterView />;
       case "lab-assistant": return (
         <LabAssistantView 
-          onRunBacktest={(strategy) => {
-            setSelectedStrategy(strategy);
-            setActiveView("backtesting");
+          onUpgrade={() => setIsUpgradeModalOpen(true)}
+          onRunBacktest={async (strategy) => {
+            try {
+              const res = await fetch("/api/usage/backtest", { method: "POST" });
+              if (res.status === 429) {
+                const data = await res.json();
+                setIsUpgradeModalOpen(true); // Trigger modal on backtest quota too
+                return;
+              }
+              setSelectedStrategy(strategy);
+              setActiveView("backtesting");
+            } catch (err) {
+              console.error("Quota check failed. Proceeding anyway...", err);
+              setSelectedStrategy(strategy);
+              setActiveView("backtesting");
+            }
           }} 
         />
       );
@@ -91,7 +143,8 @@ export default function DashboardPage() {
         />
       );
       case "help": return <HelpView />;
-      case "settings": return <SettingsView />;
+      case "settings": return <SettingsView user={user} />;
+      case "feedback": return <FeedbackView user={user} />;
       default: return <BotsView />;
     }
   };
@@ -101,12 +154,24 @@ export default function DashboardPage() {
       {/* Background Grid */}
       <div className="bg-grid pointer-events-none fixed inset-0 z-0 opacity-10" />
 
-      <Sidebar activeView={activeView} onViewChange={setActiveView} />
+      <motion.aside
+        animate={{ width: isSidebarCollapsed ? 80 : 256 }}
+        transition={{ type: "spring", damping: 20, stiffness: 150 }}
+        className="relative z-20 hidden lg:flex h-full flex-col border-r border-white/5 bg-[#050505]/50 backdrop-blur-xl"
+      >
+        <Sidebar 
+          user={user}
+          activeView={activeView} 
+          onViewChange={setActiveView} 
+          isCollapsed={isSidebarCollapsed}
+          onToggle={toggleSidebar}
+        />
+      </motion.aside>
 
       <main className="relative z-10 flex flex-1 flex-col overflow-hidden">
         <Topbar user={user} />
         
-        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-10 custom-scrollbar">
+        <div className="relative flex-1 overflow-y-auto overflow-x-hidden p-6 lg:p-10 custom-scrollbar">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeView}
@@ -121,6 +186,11 @@ export default function DashboardPage() {
           </AnimatePresence>
         </div>
       </main>
+
+      <UpgradeModal 
+        isOpen={isUpgradeModalOpen} 
+        onClose={() => setIsUpgradeModalOpen(false)} 
+      />
     </div>
   );
 }

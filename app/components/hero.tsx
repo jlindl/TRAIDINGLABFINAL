@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { motion, type Variants } from "framer-motion";
+import { motion, type Variants, useScroll, useTransform } from "framer-motion";
 
 const container: Variants = {
   hidden: { opacity: 0 },
@@ -21,6 +21,16 @@ const item: Variants = {
 };
 
 export default function Hero() {
+  const containerRef = useRef<HTMLElement>(null);
+  const { scrollYProgress } = useScroll({
+    target: containerRef,
+    offset: ["start start", "end start"]
+  });
+
+  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
+  const scale = useTransform(scrollYProgress, [0, 0.8], [1, 0.9]);
+  const blur = useTransform(scrollYProgress, [0, 0.8], [0, 10]);
+
   const btnRef = useRef<HTMLAnchorElement>(null);
   const [btnOffset, setBtnOffset] = useState({ x: 0, y: 0 });
 
@@ -38,20 +48,22 @@ export default function Hero() {
   const handleMouseLeave = () => setBtnOffset({ x: 0, y: 0 });
 
   return (
-    <section
+    <motion.section
       id="hero"
+      ref={containerRef}
+      style={{ opacity, scale, filter: `blur(${blur}px)` }}
       className="relative flex min-h-screen items-center justify-center overflow-hidden"
     >
-      {/* Background Image */}
+      {/* Background Image — Zoomed out for quality */}
       <div
-        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: "url('/hero-bg.png')" }}
+        className="absolute inset-0 z-0 bg-contain bg-center bg-no-repeat grayscale-[0.3] opacity-40 mix-blend-lighten"
+        style={{ backgroundImage: "url('/assets/landing/hero-bg-3d.png')" }}
       />
 
-      {/* Dark overlays for readability */}
-      <div className="absolute inset-0 z-[1] bg-black/65" />
+      {/* Dark overlays for readability — Deepened for Premium feel */}
+      <div className="absolute inset-0 z-[1] bg-black/60" />
       <div className="absolute inset-0 z-[2] bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
-      <div className="absolute inset-0 z-[3] bg-gradient-to-r from-[#050505]/80 via-transparent to-[#050505]/50" />
+      <div className="absolute inset-0 z-[3] bg-gradient-to-r from-[#050505]/70 via-transparent to-[#050505]/50" />
 
       {/* Neon accent glow */}
       <div className="pointer-events-none absolute inset-0 z-[4]">
@@ -77,19 +89,18 @@ export default function Hero() {
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-neon opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-neon" />
               </span>
-              <span className="font-mono text-xs uppercase tracking-[0.2em] text-[#55ff00]">
-                Live Trading
+              <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#55ff00]">
+                TradingLab v1.0 — Public Beta Now Live
               </span>
             </motion.div>
 
             {/* Headline */}
             <motion.h1
               variants={item}
-              className="text-5xl font-extrabold leading-[1.05] tracking-tighter text-white sm:text-7xl lg:text-[92px]"
+              className="text-4xl font-black leading-[0.95] tracking-[-0.05em] text-white sm:text-6xl lg:text-[80px]"
             >
-              Algorithmic Trading{" "}
-              <br className="hidden sm:block" />
-              <span className="neon-title-gradient lg:pb-3">Reimagined</span>
+              YOUR MARKET EDGE. <br className="hidden sm:block" />
+              <span className="neon-title-gradient">AUTOMATED.</span>
             </motion.h1>
 
             {/* Sub-headline */}
@@ -97,8 +108,9 @@ export default function Hero() {
               variants={item}
               className="mt-6 max-w-xl text-lg leading-relaxed text-white/50"
             >
-              Institutional-grade strategies powered by real-time AI optimization,
-              sub-millisecond execution, and deep market intelligence.
+              Transform your market intuition into high-performance automated strategies. 
+              No code, no emotional bias—just institutional-grade intelligence architected for 
+              the modern trader.
             </motion.p>
 
             {/* Stats row */}
@@ -126,25 +138,25 @@ export default function Hero() {
             <motion.div variants={item} className="mt-10 flex flex-wrap justify-center lg:justify-start gap-4">
               <motion.a
                 ref={btnRef}
-                href="#features"
+                href="/login"
                 onMouseMove={handleMouseMove}
                 onMouseLeave={handleMouseLeave}
                 animate={{ x: btnOffset.x, y: btnOffset.y }}
                 transition={{ type: "spring" as const, stiffness: 200, damping: 15 }}
                 whileTap={{ scale: 0.97 }}
-                className="inline-flex items-center gap-2 rounded-lg bg-[#55ff00] px-8 py-3.5 text-sm font-semibold text-black shadow-[0_0_40px_rgba(85,255,0,0.25)] transition-shadow hover:shadow-[0_0_60px_rgba(85,255,0,0.45)]"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#55ff00] px-8 py-3.5 text-sm font-black text-black shadow-[0_0_40px_rgba(85,255,0,0.25)] transition-shadow hover:shadow-[0_0_60px_rgba(85,255,0,0.45)]"
               >
-                <span>Launch Lab</span>
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <span>Get Started Free</span>
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
               </motion.a>
 
               <a
-                href="#market-data"
-                className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-8 py-3.5 text-sm font-medium text-white/70 transition-all hover:border-white/20 hover:text-white"
+                href="/marketplace"
+                className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-8 py-3.5 text-sm font-bold text-white/70 transition-all hover:border-neon/50 hover:text-white"
               >
-                View Strategies
+                View Marketplace
               </a>
             </motion.div>
           </motion.div>
@@ -170,6 +182,6 @@ export default function Hero() {
 
       {/* Bottom fade to page */}
       <div className="absolute bottom-0 left-0 z-[5] h-32 w-full bg-gradient-to-t from-[#050505] to-transparent" />
-    </section>
+    </motion.section>
   );
 }

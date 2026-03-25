@@ -14,14 +14,21 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
-  Columns
+  Columns,
+  ShieldAlert
 } from "lucide-react";
 import MessageList from "./lab/message-list";
 import ResearchPanel from "./lab/research-panel";
 
 import SessionSidebar from "./lab/session-sidebar";
 
-export default function LabAssistantView({ onRunBacktest }: { onRunBacktest?: (strategy: any) => void }) {
+export default function LabAssistantView({ 
+  onRunBacktest,
+  onUpgrade 
+}: { 
+  onRunBacktest?: (strategy: any) => void,
+  onUpgrade?: () => void
+}) {
   const [showResearch, setShowResearch] = useState(true);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const [researchWidth, setResearchWidth] = useState(380);
@@ -34,6 +41,8 @@ export default function LabAssistantView({ onRunBacktest }: { onRunBacktest?: (s
   const { messages, status, sendMessage, setMessages, error } = useChat({
     id: currentSessionId || "lab-assistant",
   });
+
+  const isRateLimited = error?.message?.includes("RATE_LIMIT_EXCEEDED") || (error as any)?.status === 429;
 
   // Load session messages
   const handleSelectSession = async (id: string) => {
@@ -131,26 +140,33 @@ export default function LabAssistantView({ onRunBacktest }: { onRunBacktest?: (s
   return (
     <div className="flex h-full w-full gap-0 overflow-hidden bg-[#050505] rounded-3xl border border-white/5 shadow-2xl relative">
       {/* Session History Sidebar */}
-      <motion.div
-        animate={{ width: isSidebarCollapsed ? 80 : 280 }}
-        transition={{ type: "spring", damping: 20, stiffness: 150 }}
-        className="h-full relative overflow-hidden"
-      >
-        <SessionSidebar 
-          currentSessionId={currentSessionId}
-          onSelectSession={handleSelectSession}
-          onNewChat={handleNewChat}
-          isCollapsed={isSidebarCollapsed}
-        />
+      <div className="relative h-full flex items-center">
+        <motion.div
+          animate={{ width: isSidebarCollapsed ? 0 : 280 }}
+          transition={{ type: "spring", damping: 20, stiffness: 150 }}
+          className="h-full relative overflow-hidden"
+        >
+          <SessionSidebar 
+            currentSessionId={currentSessionId}
+            onSelectSession={handleSelectSession}
+            onNewChat={handleNewChat}
+            isCollapsed={isSidebarCollapsed}
+          />
+        </motion.div>
         
-        {/* Toggle Button Inside Sidebar (Absolute positioned) */}
+        {/* Toggle Button - Positioned to stay visible even when width is 0 */}
         <button
           onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          className="absolute top-1/2 -right-3 z-50 h-6 w-6 rounded-full bg-[#080808] border border-white/10 flex items-center justify-center text-white/40 hover:text-white hover:border-neon/50 transition-all -translate-y-1/2"
+          className={`absolute top-1/2 z-50 h-8 w-6 flex items-center justify-center bg-[#080808]/80 backdrop-blur-md border border-white/5 text-white/40 hover:text-white hover:border-neon/50 transition-all -translate-y-1/2 ${
+            isSidebarCollapsed 
+              ? "left-0 rounded-r-xl border-l-0" 
+              : "right-0 translate-x-1/2 rounded-full h-6 w-6"
+          }`}
+          title={isSidebarCollapsed ? "Show History" : "Hide History"}
         >
           {isSidebarCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
         </button>
-      </motion.div>
+      </div>
 
       {/* Main Content Area */}
       <div className="flex flex-1 gap-4 overflow-hidden p-4 px-6">
@@ -222,20 +238,39 @@ export default function LabAssistantView({ onRunBacktest }: { onRunBacktest?: (s
                 )}
 
                 <form onSubmit={onFormSubmit} className="relative group">
-                  <input 
-                    type="text" 
-                    value={input}
-                    onChange={handleInputChange}
-                    placeholder="Describe a strategy or upload a chart..." 
-                    className="w-full rounded-2xl bg-white/5 border border-white/10 px-12 py-3.5 text-sm text-white placeholder:text-white/20 focus:border-neon focus:outline-none transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)] group-focus-within:border-neon/40 group-focus-within:bg-white/10"
-                  />
-                  <button 
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-neon transition-colors"
-                  >
-                     <ImageIcon className="h-5 w-5" />
-                  </button>
+                   <input 
+                     type="text" 
+                     value={input}
+                     onChange={handleInputChange}
+                     disabled={isRateLimited}
+                     placeholder={isRateLimited ? "Daily quota reached." : "Describe a strategy or upload a chart..."} 
+                     className="w-full rounded-2xl bg-white/5 border border-white/10 px-12 py-3.5 text-sm text-white placeholder:text-white/20 focus:border-neon focus:outline-none transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)] group-focus-within:border-neon/40 group-focus-within:bg-white/10 disabled:opacity-30"
+                   />
+                   
+                   {isRateLimited && (
+                     <div className="absolute inset-0 z-10 flex items-center justify-between px-6 bg-black/60 backdrop-blur-md rounded-2xl border border-red-500/20">
+                        <div className="flex items-center gap-3">
+                           <ShieldAlert className="h-4 w-4 text-red-400" />
+                           <span className="text-xs font-bold text-white/90 uppercase tracking-tighter">Daily Quota Reached</span>
+                        </div>
+                        <button 
+                          type="button"
+                          onClick={onUpgrade}
+                          className="px-4 py-1.5 bg-neon rounded-lg text-black text-[10px] font-bold uppercase tracking-widest hover:scale-105 transition-all shadow-[0_0_15px_rgba(0,255,136,0.3)]"
+                        >
+                          Upgrade for Unlimited
+                        </button>
+                     </div>
+                   )}
+
+                   <button 
+                     type="button"
+                     disabled={isRateLimited}
+                     onClick={() => fileInputRef.current?.click()}
+                     className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20 hover:text-neon transition-colors disabled:opacity-0"
+                   >
+                      <ImageIcon className="h-5 w-5" />
+                   </button>
                   <input 
                     type="file" 
                     ref={fileInputRef} 
@@ -287,7 +322,20 @@ export default function LabAssistantView({ onRunBacktest }: { onRunBacktest?: (s
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               className="overflow-hidden h-full"
             >
-              <ResearchPanel />
+              <ResearchPanel 
+                symbol={(() => {
+                  const lastUserMessage = messages.filter(m => m.role === "user").slice(-1)[0];
+                  if (!lastUserMessage) return "BTC";
+                  
+                  const text = (lastUserMessage as any).content || 
+                    (lastUserMessage.parts?.filter((p: any) => p.type === 'text').map((p: any) => p.text).join('\n')) || 
+                    "";
+                    
+                  return text.match(/\$([A-Z]{2,6})\b|\b(BTC|ETH|SOL|BNB|XRP|ADA|DOGE|NVDA|TSLA|AAPL|MSFT|GOOGL|AMZN|META)\b/i)?.[0]
+                    ?.replace('$', '')
+                    ?.toUpperCase() || "BTC";
+                })()} 
+              />
             </motion.div>
           )}
         </AnimatePresence>

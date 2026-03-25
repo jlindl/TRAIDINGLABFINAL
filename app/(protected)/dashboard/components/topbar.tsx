@@ -8,10 +8,9 @@ interface TopbarProps {
 
 export default function Topbar({ user }: TopbarProps) {
   const planStyles: Record<string, string> = {
-    "Free": "text-white/40 border-white/10 bg-white/5",
-    "Papertrader": "text-blue-400 border-blue-500/20 bg-blue-500/10",
-    "TraderPro": "text-neon border-neon/20 bg-neon/10",
-    "Quant Expert": "text-violet-400 border-violet-500/20 bg-violet-500/10",
+    "paper_trader": "text-blue-400 border-blue-500/20 bg-blue-500/10",
+    "pro_trader": "text-neon border-neon/20 bg-neon/10",
+    "admin": "text-violet-400 border-violet-500/20 bg-violet-500/10",
   };
 
   return (

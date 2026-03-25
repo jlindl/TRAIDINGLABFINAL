@@ -8,7 +8,9 @@ import Link from "next/link";
 
 const navLinks = [
   { label: "Features", href: "/features" },
+  { label: "Roadmap", href: "/roadmap" },
   { label: "Pricing", href: "/pricing" },
+  { label: "Community", href: "/community" },
   { label: "Help", href: "/help" },
 ];
 
@@ -89,13 +91,13 @@ export default function Header() {
       }`}
     >
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 lg:px-12">
-        {/* Logo */}
-        <Link href="/" className="relative flex items-center h-full">
+        {/* Logo — Refined Size */}
+        <Link href="/" className="relative flex items-center w-[180px] h-full">
           <img 
             src="/Logo.png" 
             alt="TraidingLab Logo" 
-            className="h-12 w-auto object-contain transition-transform duration-300 hover:scale-105 origin-left z-20" 
-            style={{ minWidth: '160px' }}
+            className="h-16 w-auto object-contain transition-transform duration-300 hover:scale-105 origin-left z-20" 
+            style={{ minWidth: '180px' }}
           />
         </Link>
 

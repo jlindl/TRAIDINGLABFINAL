@@ -5,26 +5,42 @@ import { motion } from "framer-motion";
 const plans = [
   {
     name: "Paper Trader",
-    price: "$0",
-    description: "Perfect for strategy development and risk-free testing.",
-    features: ["Standard Indicators", "1-Year History", "Lab Assistant (Basic)", "Community Access"],
-    button: "Start Testing",
+    price: "£0",
+    description: "Ideal for beginners and strategy refinement.",
+    features: [
+      "5 AI Research Sessions / Day",
+      "3 Backtest Simulations / Day",
+      "Standard Indicator Suite",
+      "Community Access"
+    ],
+    button: "Start Free",
     popular: false,
   },
   {
-    name: "TraderPro",
-    price: "$199",
+    name: "Pro Trader",
+    price: "£49",
     period: "/mo",
-    description: "Institutional features for professional traders.",
-    features: ["Ultima Indicators (30+)", "Full Market History", "Priority Execution", "Unlimited Lab Assistant"],
-    button: "Upgrade to Pro",
+    description: "The gold standard for institutional-grade quant research.",
+    features: [
+      "40 AI Research Sessions / Day",
+      "100 Backtest Simulations / Day",
+      "Elite Indicators (SMC, TEMA, HMA)",
+      "Institutional Sentiment Data",
+      "Priority Strategy Persistence"
+    ],
+    button: "Go Pro",
     popular: true,
   },
   {
     name: "Quant Expert",
     price: "Custom",
     description: "Bespoke infrastructure for high-frequency funds.",
-    features: ["Sub-ms Co-location", "Custom ML Models", "24/7 Dedicated Support", "Whitelabel API"],
+    features: [
+      "Sub-ms Co-location",
+      "Custom ML Models",
+      "Dedicated Compute Node",
+      "Whitelabel API Access"
+    ],
     button: "Contact Sales",
     popular: false,
   },
@@ -36,7 +52,7 @@ export default function Pricing() {
       <div className="mx-auto max-w-7xl">
         <div className="text-center mb-24">
           <span className="font-mono text-xs uppercase tracking-[0.3em] text-[#55ff00]/60">
-            Institutional Access
+            Professional Grade
           </span>
           <h2 className="mt-6 text-4xl font-black tracking-tighter text-white sm:text-6xl">
             Choose Your Edge
@@ -59,7 +75,7 @@ export default function Pricing() {
             >
               {plan.popular && (
                 <div className="absolute top-0 right-8 -translate-y-1/2 bg-[#55ff00] text-black text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full">
-                  Most Popular
+                  Top Margin Value
                 </div>
               )}
 

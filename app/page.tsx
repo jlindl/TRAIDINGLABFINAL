@@ -2,6 +2,8 @@ import Hero from "./components/hero";
 import Features from "./components/features";
 import Workflow from "./components/workflow";
 import MarketData from "./components/market-data";
+import RoadmapCTA from "./components/roadmap-cta";
+import StickyJourney from "./components/sticky-journey";
 import SpotlightCursor from "./components/spotlight-cursor";
 
 export default function Home() {
@@ -14,8 +16,10 @@ export default function Home() {
 
       <div className="relative z-10">
         <Hero />
+        <StickyJourney key="sticky-v2" />
         <Features />
-        <Workflow />
+        <Workflow key="workflow-v2" />
+        <RoadmapCTA />
         <MarketData />
       </div>
     </>

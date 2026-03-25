@@ -8,6 +8,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -17,6 +18,11 @@ export default function SignupPage() {
     e.preventDefault();
     if (password !== confirmPassword) {
       setError("Passwords do not match");
+      return;
+    }
+
+    if (!agreedToTerms) {
+      setError("You must agree to the Terms & Conditions to continue.");
       return;
     }
 
@@ -122,9 +128,22 @@ export default function SignupPage() {
           </div>
         )}
 
+        <div className="flex items-start gap-3 px-1 py-2">
+           <input 
+             id="terms"
+             type="checkbox"
+             checked={agreedToTerms}
+             onChange={(e) => setAgreedToTerms(e.target.checked)}
+             className="mt-1 h-4 w-4 rounded border-white/10 bg-white/5 text-neon focus:ring-neon accent-neon cursor-pointer"
+           />
+           <label htmlFor="terms" className="text-[11px] leading-relaxed text-white/40 transition-colors">
+             I acknowledge that I have read and agree to the <Link href="/terms-of-service" className="text-white hover:text-neon underline">Terms & Conditions</Link>, including the mandatory risk disclosures.
+           </label>
+        </div>
+
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || !agreedToTerms}
           className="w-full rounded-lg bg-neon py-3.5 text-sm font-semibold text-black transition-all hover:bg-neon-dim hover:shadow-[0_0_20px_rgba(0,255,136,0.3)] disabled:opacity-50"
         >
           {loading ? "Creating account..." : "Register"}

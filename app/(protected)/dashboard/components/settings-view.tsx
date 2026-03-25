@@ -11,13 +11,14 @@ import {
   CheckCircle2, 
   Sparkles, 
   ShieldAlert,
-  Sliders
+  Sliders,
+  CreditCard
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { motion, AnimatePresence } from "framer-motion";
 import { SUPPORTED_INDICATORS } from "@/lib/backtest/schema";
 
-export default function SettingsView() {
+export default function SettingsView({ user }: { user: any }) {
   const [activeTab, setActiveTab] = useState<"profile" | "lab" | "engine">("profile");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -47,36 +48,48 @@ export default function SettingsView() {
 
   useEffect(() => {
     const fetchSettings = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("full_name, avatar_url, settings")
-        .eq("id", user.id)
-        .single();
-
-      if (profile) {
-        setProfileData({
-          full_name: profile.full_name || "",
-          avatar_url: profile.avatar_url || ""
-        });
-        if (profile.settings) {
-          setSettings(profile.settings);
-        }
+      // If we don't have a user, we can't fetch but we MUST stop loading 
+      // otherwise the page hangs on a black spinner.
+      if (!user?.id) {
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+      
+      try {
+        const { data: profile, error } = await supabase
+          .from("profiles")
+          .select("full_name, avatar_url, settings")
+          .eq("id", user.id)
+          .single();
+
+        if (error) {
+          console.error("Error fetching settings:", error.message || error);
+        } else if (profile) {
+          setProfileData({
+            full_name: profile.full_name || "",
+            avatar_url: profile.avatar_url || ""
+          });
+          if (profile.settings) {
+            setSettings(profile.settings);
+          }
+        } else {
+          console.warn("No profile found for user:", user.id);
+        }
+      } catch (err) {
+        console.error("Critical settings fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchSettings();
-  }, [supabase]);
+  }, [supabase, user?.id]);
 
   const handleSave = async () => {
     setSaving(true);
     setMsg(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
+      if (!user?.id) throw new Error("Not authenticated");
 
       const { error } = await supabase
         .from("profiles")
@@ -205,6 +218,42 @@ export default function SettingsView() {
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-sm text-white focus:border-neon focus:outline-none transition-all"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Subscription Card */}
+            <div className="glass-edge p-8 bg-neon/[0.02] border-neon/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-neon/10 border border-neon/20">
+                    <CreditCard className="h-6 w-6 text-neon" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-white uppercase tracking-tight">Subscription & Billing</h3>
+                    <p className="text-[11px] text-white/40 mt-1 uppercase tracking-widest font-mono">Current Tier: <span className="text-neon font-bold">Pro Trader</span></p>
+                  </div>
+                </div>
+                
+                {user?.plan === "pro_trader" ? (
+                  <a 
+                    href="/api/checkout/portal"
+                    className="px-6 py-3 rounded-xl bg-white/5 border border-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 hover:border-white/20 transition-all flex items-center gap-2 group"
+                  >
+                    Manage Billing
+                    <div className="h-1 w-1 rounded-full bg-neon group-hover:scale-150 transition-transform" />
+                  </a>
+                ) : (
+                  <button 
+                    onClick={() => {
+                        // We need a way to open the modal from here. 
+                        // Since SettingsView is a child, we'll use a custom event or redirect
+                        window.location.href = "/dashboard?showUpgrade=true";
+                    }}
+                    className="px-6 py-3 rounded-xl bg-neon text-black text-[10px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-[0_0_20px_rgba(0,255,136,0.2)]"
+                  >
+                    Upgrade to Pro
+                  </button>
+                )}
               </div>
             </div>
           </motion.div>

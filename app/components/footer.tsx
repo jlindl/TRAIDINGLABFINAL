@@ -17,7 +17,7 @@ export default function Footer() {
               <img 
                 src="/Logo.png" 
                 alt="TraidingLab Logo" 
-                className="h-10 w-auto object-contain opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105 origin-left" 
+                className="h-20 w-auto object-contain opacity-80 hover:opacity-100 transition-all duration-300 hover:scale-105 origin-left" 
               />
             </Link>
             <p className="max-w-xs text-sm text-white/30 leading-relaxed font-medium">

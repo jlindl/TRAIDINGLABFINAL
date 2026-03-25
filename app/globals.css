@@ -145,7 +145,16 @@ body {
   50% { background-position: 100% 50%; }
 }
 
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
 /* ── Utility Classes ────────────────── */
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
 .animate-float {
   animation: float 6s ease-in-out infinite;
 }

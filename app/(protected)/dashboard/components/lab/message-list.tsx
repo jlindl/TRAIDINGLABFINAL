@@ -2,7 +2,7 @@
 
 import { UIMessage as Message } from "ai";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bot, User, Terminal, CheckCircle2, Zap } from "lucide-react";
+import { Bot, User, Terminal, CheckCircle2, Zap, ShieldAlert } from "lucide-react";
 import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -145,6 +145,14 @@ export default function MessageList({ messages, isLoading, error, onRunBacktest 
                   >
                     {text}
                   </ReactMarkdown>
+
+                  {/* Financial Disclaimer Bubble */}
+                  {message.role === 'assistant' && (
+                    <div className="mt-6 flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/5 text-[10px] text-white/30 italic leading-relaxed">
+                      <ShieldAlert className="h-3 w-3 mt-0.5 shrink-0 text-white/20" />
+                      <span>The quantitative logic provided above is for research and backtesting purposes only. This is not financial advice. Past performance is no guarantee of future results.</span>
+                    </div>
+                  )}
                </div>
                
                {/* Strategy Finalization Card */}

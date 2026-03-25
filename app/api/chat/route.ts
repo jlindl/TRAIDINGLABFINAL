@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { SUPPORTED_INDICATORS, CONTEXT_VARIABLES, RISK_PARAMETERS } from "@/lib/backtest/schema";
 import { fetchQuote, fetchSentiment, fetchTechnicalIndicator } from "@/lib/api/alpha_vantage";
+import { checkAndIncrementUsage } from "@/lib/usage";
 
 
 export const maxDuration = 30;
@@ -22,6 +23,22 @@ export async function POST(req: Request) {
   // Get user for persistence
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (!user) throw new Error("Unauthorized");
+
+  // --- RATE LIMITING & USAGE GUARD ---
+  const { allowed, current, limit } = await checkAndIncrementUsage(user.id);
+  
+  if (!allowed) {
+    return new Response(JSON.stringify({ 
+      error: "RATE_LIMIT_EXCEEDED", 
+      message: `Daily research quota exceeded (${current}/${limit}). Please upgrade to a Pro Trader plan for 40+ daily sessions.`,
+      current,
+      limit
+    }), {
+      status: 429,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+  // -----------------------------------
 
   // Get user profile and settings
   const { data: profile } = await supabase
