@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
 export async function GET(req: Request) {
   try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 

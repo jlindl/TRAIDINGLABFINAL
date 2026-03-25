@@ -2,9 +2,6 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
 // Create a service-role client to bypass RLS for webhook updates
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,6 +9,8 @@ const supabaseAdmin = createClient(
 );
 
 export async function POST(req: Request) {
+  const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   const body = await req.text();
   const signature = (await headers()).get("stripe-signature");
 

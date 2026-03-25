@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-
 export async function GET(req: Request) {
   try {
+    const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get('session_id');
 
