@@ -43,7 +43,7 @@ export default function SpotlightCursor() {
           left: pos.x,
           top: pos.y,
           background:
-            "radial-gradient(circle, rgba(0,255,136,0.04) 0%, transparent 70%)",
+            "radial-gradient(circle, rgba(85,255,0,0.02) 0%, transparent 70%)",
         }}
       />
     </div>

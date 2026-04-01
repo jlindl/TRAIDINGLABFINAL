@@ -54,16 +54,21 @@ export default function Hero() {
       style={{ opacity, scale, filter: `blur(${blur}px)` }}
       className="relative flex min-h-screen items-center justify-center overflow-hidden"
     >
-      {/* Background Image — Zoomed out for quality */}
+      {/* Background Image — Full 8K panoramic Peaks */}
       <div
-        className="absolute inset-0 z-0 bg-contain bg-center bg-no-repeat grayscale-[0.3] opacity-40 mix-blend-lighten"
-        style={{ backgroundImage: "url('/assets/landing/hero-bg-3d.png')" }}
+        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat grayscale-[0.2] opacity-50 mix-blend-lighten"
+        style={{ backgroundImage: "url('/assets/landing/hero_bg_peaks.png')" }}
       />
+      
+      {/* Deep Overlays for Premium Contrast */}
+      <div className="absolute inset-0 z-[1] bg-black/40" />
+      <div className="absolute inset-0 z-[2] bg-gradient-to-b from-[#050505]/0 via-transparent to-[#050505]" />
+      <div className="absolute inset-0 z-[3] bg-gradient-to-r from-[#050505]/60 via-transparent to-[#050505]/60" />
 
-      {/* Dark overlays for readability — Deepened for Premium feel */}
-      <div className="absolute inset-0 z-[1] bg-black/60" />
-      <div className="absolute inset-0 z-[2] bg-gradient-to-t from-[#050505] via-[#050505]/40 to-transparent" />
-      <div className="absolute inset-0 z-[3] bg-gradient-to-r from-[#050505]/70 via-transparent to-[#050505]/50" />
+      {/* Dark overlays for readability — Softened for more background visibility */}
+      <div className="absolute inset-0 z-[1] bg-black/40" />
+      <div className="absolute inset-0 z-[2] bg-gradient-to-t from-[#050505] via-[#050505]/20 to-transparent" />
+      <div className="absolute inset-0 z-[3] bg-gradient-to-r from-[#050505]/50 via-transparent to-[#050505]/30" />
 
       {/* Neon accent glow */}
       <div className="pointer-events-none absolute inset-0 z-[4]">
@@ -168,13 +173,10 @@ export default function Hero() {
             transition={{ duration: 0.8, delay: 0.6 }}
             className="hidden lg:flex items-center justify-center relative group"
           >
-             {/* Glow Background for Logo */}
-             <div className="absolute inset-0 bg-[#55ff00]/15 blur-[100px] rounded-full scale-95 group-hover:scale-110 transition-transform duration-1000" />
-             
              <img 
                src="/Logo.png" 
                alt="TraidingLab Official Logo" 
-               className="relative z-10 w-full h-auto max-w-[420px] object-contain drop-shadow-[0_0_40px_rgba(85,255,0,0.15)] hover:drop-shadow-[0_0_70px_rgba(85,255,0,0.35)] transition-all duration-700"
+               className="relative z-10 w-full h-auto max-w-[420px] object-contain"
              />
           </motion.div>
         </div>

@@ -25,9 +25,9 @@ function FeatureTile({
       transition={{ type: "spring", stiffness: 300, damping: 20 }}
       className={`glass-edge group relative flex flex-col justify-end p-8 h-full overflow-hidden ${className}`}
     >
-      {/* Background Visual */}
+      {/* Background Visual — Now in full color for a premium feel */}
       <div 
-        className="absolute inset-0 z-0 bg-cover bg-center grayscale opacity-10 group-hover:opacity-30 group-hover:grayscale-0 transition-all duration-700"
+        className="absolute inset-0 z-0 bg-cover bg-center opacity-15 group-hover:opacity-40 transition-all duration-700"
         style={{ backgroundImage: `url(${img})` }} 
       />
       <div className="absolute inset-0 z-[1] bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent" />

@@ -20,11 +20,11 @@ import Link from "next/link";
 
 /* ── Asset Mapping ────────────────────── */
 const ASSETS = {
-  foundation: "/tradinglab_feature_backtest_1774386811262.png",
-  ghostWriter: "/tradinglab_ai_hologram_1774385365598.png",
-  labScript: "/tradinglab_ideate_visual_1774386049408.png",
-  deployment: "/tradinglab_feature_automation_1774386826004.png",
-  ecosystem: "/tradinglab_multi_asset_console_1774387181350.png",
+  foundation: "/assets/roadmap/foundation.png",
+  ghostWriter: "/assets/roadmap/ghost_writer.png",
+  labScript: "/assets/roadmap/labscript.png",
+  deployment: "/assets/roadmap/deployment.png",
+  ecosystem: "/assets/roadmap/ecosystem.png",
 };
 
 /* ── Feature Data ─────────────────────── */
@@ -135,7 +135,7 @@ function StickyPhase({ phase, isLast }: { phase: typeof PHASES[0], isLast: boole
           <img 
             src={phase.image} 
             alt={phase.title}
-            className="h-full w-full object-cover opacity-60 grayscale group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-1000 scale-105 group-hover:scale-100"
+            className="h-full w-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-1000 scale-105 group-hover:scale-100"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent opacity-60" />
           
