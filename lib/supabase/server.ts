@@ -33,13 +33,18 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           try {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options)
-            )
+            cookiesToSet.forEach(({ name, value, options }) => {
+              // Standard behavior is to use persistent cookies (stored for 1 year).
+              // We're overriding that here to ensure authentication is "Session-Only."
+              // By removing maxAge and expires, the cookie will be deleted when the browser is closed.
+              const sessionOptions = { ...options };
+              delete sessionOptions.maxAge;
+              delete (sessionOptions as any).expires;
+              
+              cookieStore.set(name, value, sessionOptions);
+            });
           } catch {
             // The `setAll` method was called from a Server Component.
-            // This can be ignored if you have proxy refreshing
-            // user sessions.
           }
         },
       },

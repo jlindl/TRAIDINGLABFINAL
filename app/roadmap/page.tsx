@@ -32,66 +32,66 @@ const PHASES = [
   {
     id: "01",
     key: "foundation",
-    title: "Precision Foundation",
+    title: "The Research Lab",
     status: "CURRENT",
-    description: "Establishing the core quantitative research layer for non-coders.",
+    description: "Where your best trading ideas become data-backed strategies. We’ve built the heavy lifting so you don't have to write a single line of code.",
     image: ASSETS.foundation,
     features: [
-      { name: "AI Strategy Lab", icon: <Zap className="h-4 w-4" /> },
-      { name: "Tick-Backtesting", icon: <Search className="h-4 w-4" /> },
-      { name: "Global Asset Coverage", icon: <Globe className="h-4 w-4" /> }
+      { name: "No-Code Strategy Lab", icon: <Zap className="h-4 w-4" /> },
+      { name: "Instant Backtesting", icon: <Search className="h-4 w-4" /> },
+      { name: "Global Market Access", icon: <Globe className="h-4 w-4" /> }
     ]
   },
   {
     id: "02",
     key: "ghost-writer",
-    title: "The Ghost Writer",
+    title: "Your Intelligent Shadow",
     status: "IN DEVELOPMENT",
-    description: "Bridging the gap between discretionary intuition and algorithmic precision.",
+    description: "Imagine an AI that watches how you trade and learns your unique style. It captures your intuition and turns it into a strategy that works even when you're away.",
     image: ASSETS.ghostWriter,
-    details: "The Ghost Writer is a behavioral translation engine. As you trade manually, the system observes your entries, exits, and risk adjustments. It then refines this data into a repeatable 'Logic Signature'—automatically generating a strategy that trades exactly like you do.",
+    details: "The Ghost Writer isn't just code—it’s a digital mirror. As you trade manually, the system observes your entries, exits, and how you manage risk. It then refines this into a repeatable 'Logic Signature'—automatically building a strategy that trades exactly like you do.",
     features: [
-      { name: "Behavioral Translation", icon: <PenTool className="h-4 w-4" /> },
+      { name: "Personal Style Learning", icon: <PenTool className="h-4 w-4" /> },
       { name: "Logic Signatures", icon: <Zap className="h-4 w-4" /> }
     ]
   },
   {
     id: "03",
     key: "labscript",
-    title: "LabScript Core",
+    title: "The Engine Room",
     status: "STRATEGIC",
-    description: "The proprietary technology layer powering the entire TRADINGLAB ecosystem.",
+    description: "The invisible power that makes every strategy run perfectly. It’s the brain of the platform, ensuring zero errors and lightning-fast decisions.",
     image: ASSETS.labScript,
-    details: "LabScript is our deterministic logic layer. Unlike generic code, LabScript is structured to prevent arbitrary execution while ensuring sub-millisecond interpretation between human input, AI, and execution APIs.",
+    details: "Our core technology is built for extreme reliability. Unlike generic apps that can lag, our engine is structured to prevent errors while making sure your ideas are interpreted and executed in a fraction of a millisecond.",
     features: [
-      { name: "Deterministic Engine", icon: <Code2 className="h-4 w-4" /> },
-      { name: "Universal Translation", icon: <Globe className="h-4 w-4" /> }
+      { name: "Reliability Engine", icon: <Code2 className="h-4 w-4" /> },
+      { name: "Perfect Translation", icon: <Globe className="h-4 w-4" /> }
     ]
   },
   {
     id: "04",
     key: "deployment",
-    title: "Live Execution",
+    title: "Entering the Real Market",
     status: "ROADMAP",
-    description: "Transitioning from pure research to live-market capital deployment.",
+    description: "Move from theory to reality. Safely connect your favorite brokers and start trading your proven ideas with real capital.",
     image: ASSETS.deployment,
-    details: "This milestone enables deep integration with major broker APIs. Strategies proven in the lab can be deployed to high-priority cloud clusters with institutional-grade risk guards.",
+    details: "This is where the research pays off. We’ve built secure bridges to major brokers so you can deploy your strategies to high-speed servers with professional-grade safety guards in place to protect your capital.",
     features: [
-      { name: "Broker API Nexus", icon: <Cloud className="h-4 w-4" /> },
-      { name: "Safety Protocols", icon: <ShieldCheck className="h-4 w-4" /> }
+      { name: "Secure Broker Bridge", icon: <Cloud className="h-4 w-4" /> },
+      { name: "Institutional Safety", icon: <ShieldCheck className="h-4 w-4" /> }
     ]
   },
   {
     id: "05",
     key: "ecosystem",
-    title: "Marketplace Economy",
+    title: "The Strategy Hub",
     status: "ROADMAP",
-    description: "Decentralizing strategy ownership through the TRAID Coin economy.",
+    description: "A new kind of trading community. Share what works, discover what others have built, and grow together in a fair, shared economy.",
     image: ASSETS.ecosystem,
-    details: "Introducing TRAID Coin—the native fuel of the ecosystem. Users can list their validated strategies on the Marketplace. Creators earn TRAID tokens, while traders gain access to proven signals.",
+    details: "Introducing a marketplace where everyone wins. List your best strategies to earn rewards, or follow proven signals from other top traders. It’s about decentralizing success and building a community of intelligent traders through the TRAID economy.",
     features: [
-      { name: "Strategy Exchange", icon: <Search className="h-4 w-4" /> }, // Use search for market
-      { name: "TRAID Tokenization", icon: <Coins className="h-4 w-4" /> }
+      { name: "Strategy Exchange", icon: <Search className="h-4 w-4" /> }, 
+      { name: "Shared Growth", icon: <Coins className="h-4 w-4" /> }
     ]
   }
 ];
@@ -167,19 +167,18 @@ function StickyPhase({ phase, isLast }: { phase: typeof PHASES[0], isLast: boole
                  {phase.details}
                </p>
             </div>
-            
-            <div className="glass-edge p-6 bg-white/[0.01] border-white/5 flex items-center justify-between group cursor-pointer hover:bg-white/[0.03] transition-all">
+                        <div className="glass-edge p-6 bg-white/[0.01] border-white/5 flex items-center justify-between group cursor-pointer hover:bg-white/[0.03] transition-all">
                <div>
-                 <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest block mb-1">Architecture</span>
-                 <p className="text-sm font-bold text-white group-hover:text-neon transition-colors">LabScript Runtime 2.4</p>
+                 <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest block mb-1">Infrastructure</span>
+                 <p className="text-sm font-bold text-white group-hover:text-neon transition-colors">Lab Engine 2.4</p>
                </div>
                <Plus className="h-4 w-4 text-white/20 group-hover:text-neon group-hover:rotate-90 transition-all" />
             </div>
 
             <div className="glass-edge p-6 bg-white/[0.01] border-white/5 flex items-center justify-between group cursor-pointer hover:bg-white/[0.03] transition-all">
                <div>
-                 <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest block mb-1">Security</span>
-                 <p className="text-sm font-bold text-white group-hover:text-neon transition-colors">Quantum Position Lockdown</p>
+                 <span className="text-[10px] font-mono text-white/20 uppercase tracking-widest block mb-1">Protection</span>
+                 <p className="text-sm font-bold text-white group-hover:text-neon transition-colors">Capital Guard Protocols</p>
                </div>
                <Plus className="h-4 w-4 text-white/20 group-hover:text-neon group-hover:rotate-90 transition-all" />
             </div>
@@ -224,17 +223,17 @@ export default function RoadmapPage() {
            className="glass-edge inline-flex items-center gap-3 px-6 py-2 border-neon/20 bg-neon/5 text-neon mb-8"
         >
            <Zap className="h-4 w-4 animate-pulse" />
-           <span className="font-mono text-[10px] uppercase tracking-[0.5em] font-black">The Lab Blueprint V: Evolution</span>
+           <span className="font-mono text-[10px] uppercase tracking-[0.5em] font-black">Our Journey: The Evolution</span>
         </motion.div>
         
         <h1 className="text-6xl lg:text-[10rem] font-black leading-[0.8] uppercase tracking-tighter mb-12">
-          STRATEGIC <br/>
-          <span className="text-white/20">SENTINEL.</span>
+          THE <br/>
+          <span className="text-white/20">PLAN.</span>
         </h1>
 
         <div className="mx-auto max-w-2xl">
            <p className="text-lg text-white/40 leading-relaxed font-medium">
-             A high-fidelity roadmap chronicling the transition from quantitative research tool to global trading infrastructure.
+             From a small research lab to a global trading ecosystem. This is how we’re building the future of intelligent trading, step by step.
            </p>
         </div>
       </header>
@@ -257,13 +256,13 @@ export default function RoadmapPage() {
          <div className="mx-auto max-w-4xl space-y-12">
             <h2 className="text-3xl lg:text-5xl font-black text-white uppercase tracking-tighter leading-none italic">
                The Laboratory <br/>
-               <span className="text-white/20">is Never Static.</span>
+               <span className="text-white/20">is Always Growing.</span>
             </h2>
             <Link 
               href="/dashboard"
               className="group relative inline-flex items-center gap-4 bg-white text-black px-12 py-6 font-black uppercase tracking-widest text-sm hover:bg-neon transition-all hover:shadow-[0_0_50px_rgba(0,255,136,0.5)]"
             >
-              Enter Research Command
+              Start Your Research
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-2" />
             </Link>
          </div>
