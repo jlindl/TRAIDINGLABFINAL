@@ -33,7 +33,10 @@ interface BacktestingViewProps {
 export default function BacktestingView({ initialStrategy, onClearInitial }: BacktestingViewProps) {
   const [symbol, setSymbol] = useState("BTC");
   const [timeframe, setTimeframe] = useState("1D");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [strategyJson, setStrategyJson] = useState(DEFAULT_STRATEGY);
+  const [strategyName, setStrategyName] = useState("");
   const [csvFile, setCsvFile] = useState<File | null>(null);
   
   const [isRunning, setIsRunning] = useState(false);
@@ -74,9 +77,33 @@ export default function BacktestingView({ initialStrategy, onClearInitial }: Bac
       if (initialStrategy.strategy_json) {
         // Payload from Database (SavedStrategiesView)
         setStrategyJson(JSON.stringify(initialStrategy.strategy_json, null, 2));
+      } else if (initialStrategy.setup || initialStrategy.entry) {
+        // Standardized StrategyJSON Payload (from Lab Assistant + Linter)
+        const engineReadyJson = {
+          setup: initialStrategy.setup || { indicators: {} },
+          entry: initialStrategy.entry || { 
+            logic: initialStrategy.entryLogic || "",
+            shortLogic: initialStrategy.entryShortLogic || ""
+          },
+          exit: initialStrategy.exit || { 
+            logic: initialStrategy.exitLogic || "", 
+            shortLogic: initialStrategy.exitShortLogic ?? "",
+            tpPct: initialStrategy.tpPct || 0.05, 
+            slPct: initialStrategy.slPct || 0.02,
+            tslPct: initialStrategy.tslPct,
+            bePct: initialStrategy.bePct,
+            partialTpPct: initialStrategy.partialTpPct,
+            partialTpSize: initialStrategy.partialTpSize
+          }
+        };
+        setStrategyJson(JSON.stringify(engineReadyJson, null, 2));
+        if (initialStrategy.ticker) setSymbol(initialStrategy.ticker);
+        if (initialStrategy.timeframe) setTimeframe(initialStrategy.timeframe);
+        if (initialStrategy.startDate) setStartDate(initialStrategy.startDate);
+        if (initialStrategy.endDate) setEndDate(initialStrategy.endDate);
+        if (initialStrategy.name) setStrategyName(initialStrategy.name);
       } else if (initialStrategy.logic) {
-        // Payload from AI SDK (LabAssistantView)
-        // Check if user has risk defaults
+        // Fallback for older flat payloads
         const formattedJson = {
           setup: {
             indicators: initialStrategy.parameters || {}
@@ -85,7 +112,7 @@ export default function BacktestingView({ initialStrategy, onClearInitial }: Bac
             logic: initialStrategy.logic
           },
           exit: {
-            logic: `NOT (${initialStrategy.logic})`, // Adaptive inverse exit
+            logic: initialStrategy.exitLogic || `NOT (${initialStrategy.logic})`,
             tpPct: initialStrategy.tpPct || 0.05,
             slPct: initialStrategy.slPct || 0.02
           }
@@ -93,17 +120,19 @@ export default function BacktestingView({ initialStrategy, onClearInitial }: Bac
         setStrategyJson(JSON.stringify(formattedJson, null, 2));
         if (initialStrategy.symbol) setSymbol(initialStrategy.symbol);
         if (initialStrategy.timeframe) setTimeframe(initialStrategy.timeframe);
+        if (initialStrategy.startDate) setStartDate(initialStrategy.startDate);
+        if (initialStrategy.endDate) setEndDate(initialStrategy.endDate);
         if (initialStrategy.name) setStrategyName(initialStrategy.name);
       }
       
-      setResults(null); // Reset current results when loading new strategy
+      setResults(null);
       setError(null);
       onClearInitial?.();
     }
   }, [initialStrategy, onClearInitial]);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [strategyName, setStrategyName] = useState("");
   const [showSaveInput, setShowSaveInput] = useState(false);
   const [showImporter, setShowImporter] = useState(false);
 
@@ -146,7 +175,7 @@ export default function BacktestingView({ initialStrategy, onClearInitial }: Bac
       if (csvFile) {
         data = await parseCSVData(csvFile);
       } else {
-        data = await fetchAlphaVantageData(symbol, timeframe);
+        data = await fetchAlphaVantageData(symbol, timeframe, startDate, endDate);
       }
 
       // 2. Detect and Fetch HTF Dependencies
@@ -422,12 +451,33 @@ export default function BacktestingView({ initialStrategy, onClearInitial }: Bac
                      />
                   </div>
                   
+                  <div className="grid grid-cols-2 gap-2">
+                     <div className="flex flex-col gap-1.5">
+                        <span className="text-[9px] text-white/40 uppercase">Start Date</span>
+                        <input 
+                           type="date" 
+                           value={startDate}
+                           onChange={e => setStartDate(e.target.value)}
+                           className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white focus:outline-none focus:border-neon/50"
+                        />
+                     </div>
+                     <div className="flex flex-col gap-1.5">
+                        <span className="text-[9px] text-white/40 uppercase">End Date</span>
+                        <input 
+                           type="date" 
+                           value={endDate}
+                           onChange={e => setEndDate(e.target.value)}
+                           className="bg-black/40 border border-white/10 rounded-lg px-2 py-1.5 text-[10px] text-white focus:outline-none focus:border-neon/50"
+                        />
+                     </div>
+                  </div>
+
                   <div className="relative pt-2">
                      <div className="absolute inset-0 flex items-center" aria-hidden="true">
                         <div className="w-full border-t border-white/10" />
                      </div>
                      <div className="relative flex justify-center">
-                        <span className="bg-[#0c0c0c] px-2 text-[10px] text-white/40 uppercase">OR ODD CSV</span>
+                        <span className="bg-[#0c0c0c] px-2 text-[10px] text-white/40 uppercase">OR UPLOAD CSV</span>
                      </div>
                   </div>
 

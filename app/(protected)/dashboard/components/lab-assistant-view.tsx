@@ -129,14 +129,17 @@ export default function LabAssistantView({
     e.preventDefault();
     if (!input && attachments.length === 0) return;
 
-    // Use standard sendMessage signature for v4: sendMessage(input, options)
-    await (sendMessage as any)({ text: input }, {
-      experimental_attachments: attachments,
-      body: { id: currentSessionId }
-    });
-    
+    const currentInput = input;
+    const currentAttachments = [...attachments];
+
     setInput("");
     setAttachments([]);
+
+    // Use standard sendMessage signature for v4: sendMessage(input, options)
+    await (sendMessage as any)({ text: currentInput }, {
+      experimental_attachments: currentAttachments,
+      body: { id: currentSessionId }
+    });
     
     // If it was a new session, the backend will have created one.
     // We might want to refresh the sidebar here, but we'll rely on currentSessionId state

@@ -8,21 +8,30 @@ export async function POST(req: Request) {
   const { code, language } = await req.json();
 
   const systemPrompt = `You are a Technical Trading Strategy Compiler.
-Your task is to translate trading strategy code from ${language || "another language"} into the TRAIDINGLAB Strategy JSON format.
+Your task is to translate trading strategy code (PineScript, Python, MQL) into the TRAIDINGLAB Strategy JSON format.
 
-RULES:
-1. Output ONLY the raw JSON. No markdown, no triple backticks, no explanation.
-2. If an indicator is not supported, map it to the closest supported alternative or use a custom formula if possible.
-3. Maintain the integrity of the original logic (Entry, Exit, Stop Loss, Take Profit).
-4. Use the following schema definition as your absolute guide:
-${STRATEGY_SCHEMA_PROMPT}
+SCHEMA STRUCTURE:
+{
+  "setup": { "indicators": { "NAME": { "type": "CODE", "param": value } } },
+  "entry": { "logic": "INDICATOR > VALUE" },
+  "exit": { "logic": "INDICATOR < VALUE", "tpPct": 0.05, "slPct": 0.02 }
+}
 
-If the code is invalid or cannot be translated, output an empty JSON object {} and nothing else.`;
+CRITICAL RULES:
+1. Output ONLY RAW JSON. No markdown tags (No \`\`\`json).
+2. Indicators MUST be defined in "setup.indicators" before being used in logic.
+3. Use only supported indicator codes: RSI, SMA, EMA, MACD, BB, ATR, etc.
+4. For crossovers, translate to (CLOSE > SMA AND CLOSE_PREV <= SMA_PREV).
+5. If the source has a specific Stop Loss or Take Profit, map them to "exit.slPct" and "exit.tpPct".
+6. If the code is untranslatable, return {}.
+
+REFERENCE SCHEMA:
+${STRATEGY_SCHEMA_PROMPT}`;
 
   const result = await streamText({
-    model: openai("gpt-4o"),
+    model: openai("gpt-5.4-mini"),
     system: systemPrompt,
-    prompt: `Translate the following ${language || ""} code into TRAIDINGLAB Strategy JSON:\n\n${code}`,
+    prompt: `Translate the following ${language || ""} code into TRADINGLAB Strategy JSON:\n\n${code}`,
   });
 
   return result.toTextStreamResponse();

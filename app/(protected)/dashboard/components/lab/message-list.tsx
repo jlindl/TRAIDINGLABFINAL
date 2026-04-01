@@ -39,7 +39,7 @@ export default function MessageList({ messages, isLoading, error, onRunBacktest 
 
   return (
     <div className="flex-1 overflow-y-auto px-6 py-8 custom-scrollbar space-y-8">
-      {visibleMessages.map((message) => {
+      {visibleMessages.map((message, idx) => {
         const text = getMessageText(message);
         let toolInvocations = (message as any).toolInvocations || [];
         
@@ -55,12 +55,15 @@ export default function MessageList({ messages, isLoading, error, onRunBacktest 
             }));
         }
         
+        const isLastVisible = idx === visibleMessages.length - 1;
+        const isStreaming = isLastVisible && isLoading && message.role === 'assistant';
+
         return (
           <motion.div
             key={message.id}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
+            transition={{ duration: 0.3 }}
             className={`flex gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
           >
             <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
@@ -129,22 +132,32 @@ export default function MessageList({ messages, isLoading, error, onRunBacktest 
                   )}
 
                   {/* Markdown Content */}
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
-                      h1: ({ children }) => <h1 className="text-lg font-bold text-white mb-2">{children}</h1>,
-                      h2: ({ children }) => <h2 className="text-md font-bold text-white mb-2">{children}</h2>,
-                      h3: ({ children }) => <h3 className="text-sm font-bold text-white mb-2">{children}</h3>,
-                      ul: ({ children }) => <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>,
-                      ol: ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>,
-                      li: ({ children }) => <li className="text-white/70">{children}</li>,
-                      strong: ({ children }) => <strong className="text-neon font-bold">{children}</strong>,
-                      code: ({ children }) => <code className="bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono text-neon">{children}</code>,
-                    }}
-                  >
-                    {text}
-                  </ReactMarkdown>
+                  <div className="relative">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        p: ({ children }) => <p className="mb-4 last:mb-0 last:inline">{children}</p>,
+                        h1: ({ children }) => <h1 className="text-lg font-bold text-white mb-2">{children}</h1>,
+                        h2: ({ children }) => <h2 className="text-md font-bold text-white mb-2">{children}</h2>,
+                        h3: ({ children }) => <h3 className="text-sm font-bold text-white mb-2">{children}</h3>,
+                        ul: ({ children }) => <ul className="list-disc list-inside mb-4 space-y-1">{children}</ul>,
+                        ol: ({ children }) => <ol className="list-decimal list-inside mb-4 space-y-1">{children}</ol>,
+                        li: ({ children }) => <li className="text-white/70">{children}</li>,
+                        strong: ({ children }) => <strong className="text-neon font-bold">{children}</strong>,
+                        code: ({ children }) => <code className="bg-white/10 px-1.5 py-0.5 rounded text-xs font-mono text-neon">{children}</code>,
+                      }}
+                    >
+                      {text}
+                    </ReactMarkdown>
+                    {isStreaming && (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: [0, 1, 0] }}
+                        transition={{ repeat: Infinity, duration: 0.8, ease: "easeInOut" }}
+                        className="inline-block w-1.5 h-4 bg-neon ml-1 translate-y-0.5 shadow-[0_0_8px_rgba(85,255,0,0.5)]"
+                      />
+                    )}
+                  </div>
 
                   {/* Financial Disclaimer Bubble */}
                   {message.role === 'assistant' && (
@@ -162,26 +175,64 @@ export default function MessageList({ messages, isLoading, error, onRunBacktest 
                     animate={{ scale: 1, opacity: 1 }}
                     className="mt-4 w-full glass-edge bg-neon/10 border-neon/30 p-4 rounded-xl border"
                   >
-                     <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                            <Terminal className="h-4 w-4 text-neon" />
                            <span className="text-[10px] font-mono font-bold text-neon uppercase tracking-widest">Strategy Finalized</span>
                         </div>
-                        <CheckCircle2 className="h-4 w-4 text-neon" />
+                        {toolInvocations.find((tc: any) => tc.toolName === 'finalize_strategy')?.result?.status === 'warning' ? (
+                          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20">
+                            <span className="text-[8px] font-bold text-yellow-500 uppercase">Fixed</span>
+                          </div>
+                        ) : (
+                          <CheckCircle2 className="h-4 w-4 text-neon" />
+                        )}
                      </div>
-                     <p className="text-xs text-white/60 mb-6 italic truncate">
+                     <p className="text-xs text-white/60 mb-4 italic truncate">
                         {toolInvocations.find((tc: any) => tc.toolName === 'finalize_strategy')?.args?.name || "Ready for backtesting."}
                      </p>
+
+                     {/* Linter Fixes */}
+                     {toolInvocations.find((tc: any) => tc.toolName === 'finalize_strategy')?.result?.fixes?.length > 0 && (
+                        <div className="mb-5 bg-black/30 rounded-lg p-2.5 border border-white/5">
+                           <div className="text-[8px] uppercase text-white/40 mb-1.5 font-bold tracking-wider">Engine Compatibility Fixes:</div>
+                           <ul className="text-[10px] text-neon/90 space-y-1">
+                              {toolInvocations.find((tc: any) => tc.toolName === 'finalize_strategy').result.fixes.map((f: string, i: number) => (
+                                <li key={i} className="flex gap-2">
+                                  <span className="text-neon/40">•</span>
+                                  <span>{f}</span>
+                                </li>
+                              ))}
+                           </ul>
+                        </div>
+                     )}
+
                      <button 
                        onClick={() => {
                          const toolCall = toolInvocations.find((tc: any) => tc.toolName === 'finalize_strategy');
                          if (toolCall?.args) {
+                           // Use the FIXED strategy from result if available, otherwise map args
+                           const engineStrategy = toolCall.result?.strategy || {
+                             setup: { indicators: toolCall.args.indicators },
+                             entry: { 
+                               logic: toolCall.args.entryLogic, 
+                               shortLogic: toolCall.args.entryShortLogic 
+                             },
+                             exit: { 
+                               logic: toolCall.args.exitLogic, 
+                               shortLogic: toolCall.args.exitShortLogic,
+                               tpPct: toolCall.args.tpPct,
+                               slPct: toolCall.args.slPct,
+                               tslPct: toolCall.args.tslPct,
+                               bePct: toolCall.args.bePct
+                             }
+                           };
+
                            onRunBacktest?.({
                              name: toolCall.args.name,
                              symbol: toolCall.args.ticker,
                              timeframe: toolCall.args.timeframe,
-                             logic: toolCall.args.logic,
-                             parameters: toolCall.args.parameters
+                             ...engineStrategy
                            });
                          }
                        }}

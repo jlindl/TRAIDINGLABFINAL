@@ -52,9 +52,18 @@ export async function parseCSVData(file: File): Promise<OHLCV[]> {
 /**
  * Fetches real market data from Alpha Vantage via Supabase Proxy (or direct Edge Function in prod)
  */
-export async function fetchAlphaVantageData(symbol: string, timeframe: string): Promise<OHLCV[]> {
+export async function fetchAlphaVantageData(
+    symbol: string, 
+    timeframe: string,
+    startDate?: string,
+    endDate?: string
+): Promise<OHLCV[]> {
   try {
-     const res = await fetch(`/api/market/history?symbol=${symbol}&timeframe=${timeframe}`);
+     const params = new URLSearchParams({ symbol, timeframe });
+     if (startDate) params.append("startDate", startDate);
+     if (endDate) params.append("endDate", endDate);
+
+     const res = await fetch(`/api/market/history?${params.toString()}`);
      const json = await res.json();
 
      if (!res.ok) {

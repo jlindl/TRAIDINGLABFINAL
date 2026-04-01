@@ -6,6 +6,8 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get("symbol");
   const timeframe = searchParams.get("timeframe") || "1D";
+  const startDate = searchParams.get("startDate") || undefined;
+  const endDate = searchParams.get("endDate") || undefined;
 
   if (!symbol) {
     return NextResponse.json({ error: "Missing symbol parameter" }, { status: 400 });
@@ -21,9 +23,7 @@ export async function GET(req: Request) {
   const apiKey = process.env.ALPHA_VANTAGE_API_KEY || "demo";
 
   try {
-    // Ideally, check Supabase Cache here first
-    // Then fallback to fetching
-    const data = await fetchMarketData(symbol, timeframe, apiKey);
+    const data = await fetchMarketData(symbol, timeframe, apiKey, startDate, endDate);
 
     // Save to Cache here asynchronously before returning
     // ...

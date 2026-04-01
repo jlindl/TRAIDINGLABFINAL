@@ -2,7 +2,13 @@ import { z } from "zod";
 
 const alphaVantageTSRecord = z.record(z.string(), z.string());
 
-export async function fetchMarketData(symbol: string, timeframe: string = "1D", apiKey: string) {
+export async function fetchMarketData(
+    symbol: string, 
+    timeframe: string = "1D", 
+    apiKey: string,
+    startDate?: string,
+    endDate?: string
+) {
     let func = "TIME_SERIES_DAILY";
     let dataKey = "Time Series (Daily)";
 
@@ -18,7 +24,7 @@ export async function fetchMarketData(symbol: string, timeframe: string = "1D", 
             func = "TIME_SERIES_WEEKLY";
             dataKey = "Weekly Time Series";
             break;
-        case "1M_TF": // 1M as timeframe to distinguish from monthly
+        case "1M_TF": 
             func = "TIME_SERIES_MONTHLY";
             dataKey = "Monthly Time Series";
             break;
@@ -28,34 +34,39 @@ export async function fetchMarketData(symbol: string, timeframe: string = "1D", 
     }
 
     const intervalParam = func === "TIME_SERIES_INTRADAY" ? `&interval=${timeframe.toLowerCase()}` : "";
-    const url = `https://www.alphavantage.co/query?function=${func}&symbol=${symbol}${intervalParam}&apikey=${apiKey}`;
+    
+    // Use outputsize=full for Daily if a startDate is provided (implies we want history)
+    const outputSizeParam = (func === "TIME_SERIES_DAILY" && startDate) ? "&outputsize=full" : "";
+    
+    const url = `https://www.alphavantage.co/query?function=${func}&symbol=${symbol}${intervalParam}${outputSizeParam}&apikey=${apiKey}`;
     
     const res = await fetch(url);
     const data = await res.json();
     
-    // Check for Alpha Vantage errors
-    if (data.Note) {
-        throw new Error("ALPHA_VANTAGE_RATE_LIMIT");
-    }
-    if (data["Error Message"]) {
-        throw new Error(`ALPHA_VANTAGE_ERROR: ${data["Error Message"]}`);
-    }
+    if (data.Note) throw new Error("ALPHA_VANTAGE_RATE_LIMIT");
+    if (data["Error Message"]) throw new Error(`ALPHA_VANTAGE_ERROR: ${data["Error Message"]}`);
 
     if (!data[dataKey]) {
         console.error("AlphaVantage Error (Missing Key):", data);
         return []; 
     }
 
-    // Transform to OHLCV array
+    const startTs = startDate ? new Date(startDate).getTime() : 0;
+    const endTs = endDate ? new Date(endDate).getTime() : Infinity;
+
+    // Transform and Filter
     const timeSeries = data[dataKey];
-    return Object.entries(timeSeries).map(([timestamp, values]: [string, any]) => ({
-        timestamp: new Date(timestamp).getTime(),
-        open: parseFloat(values["1. open"]),
-        high: parseFloat(values["2. high"]),
-        low: parseFloat(values["3. low"]),
-        close: parseFloat(values["4. close"]),
-        volume: parseFloat(values["5. volume"]) || 0
-    })).sort((a, b) => a.timestamp - b.timestamp);
+    return Object.entries(timeSeries)
+        .map(([timestamp, values]: [string, any]) => ({
+            timestamp: new Date(timestamp).getTime(),
+            open: parseFloat(values["1. open"]),
+            high: parseFloat(values["2. high"]),
+            low: parseFloat(values["3. low"]),
+            close: parseFloat(values["4. close"]),
+            volume: parseFloat(values["5. volume"]) || 0
+        }))
+        .filter(d => d.timestamp >= startTs && d.timestamp <= endTs)
+        .sort((a, b) => a.timestamp - b.timestamp);
 }
 
 export async function fetchQuote(symbol: string, apiKey: string) {
